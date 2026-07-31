@@ -86,6 +86,20 @@ def weights_partial(request: Request, _=Depends(require_login)):
     )
 
 
+@router.post("/weights/review", response_class=HTMLResponse)
+def run_ai_review(request: Request, _=Depends(require_login)):
+    try:
+        results = review_and_adjust_weights()
+        error = None
+    except Exception as e:
+        logger.exception("AI weight review pass failed")
+        results = []
+        error = str(e)
+    return templates.TemplateResponse(
+        request, "partials/review_results.html", {"results": results, "error": error}
+    )
+
+
 @router.post("/weights/{weight_id}", response_class=HTMLResponse)
 def update_weight_manually(
     request: Request, weight_id: int, weight: float = Form(...), _=Depends(require_login)
@@ -108,20 +122,6 @@ def update_weight_manually(
         weights = session.query(StrategyWeight).all()
     return templates.TemplateResponse(
         request, "partials/weights_table.html", {"weights": weights}
-    )
-
-
-@router.post("/weights/review", response_class=HTMLResponse)
-def run_ai_review(request: Request, _=Depends(require_login)):
-    try:
-        results = review_and_adjust_weights()
-        error = None
-    except Exception as e:
-        logger.exception("AI weight review pass failed")
-        results = []
-        error = str(e)
-    return templates.TemplateResponse(
-        request, "partials/review_results.html", {"results": results, "error": error}
     )
 
 
