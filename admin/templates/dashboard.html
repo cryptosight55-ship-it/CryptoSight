@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - CryptoSight Admin{% endblock %}
+{% block content %}
+
+<div class="card">
+    <h2 style="margin-top:0">Strategy weights</h2>
+    <p class="muted">The AI reviews recent closed signals per strategy and proposes weight
+        adjustments, bounded to &plusmn;20% per run and clamped to each strategy's
+        configured range. Every change is logged with the reasoning behind it.</p>
+    <button hx-post="/admin/weights/review" hx-target="#review-results" hx-swap="innerHTML"
+            hx-indicator="#review-spinner">
+        Run AI review now
+    </button>
+    <span id="review-spinner" class="htmx-indicator muted">Reviewing...</span>
+    <div id="review-results" style="margin-top:1rem"></div>
+
+    <div hx-get="/admin/weights" hx-trigger="load" hx-swap="innerHTML" id="weights-container"></div>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Recent signals</h2>
+    <div hx-get="/admin/signals" hx-trigger="load, every 30s" hx-swap="innerHTML"></div>
+</div>
+
+{% endblock %}

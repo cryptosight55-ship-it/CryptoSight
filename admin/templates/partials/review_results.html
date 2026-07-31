@@ -1,0 +1,22 @@
+{% if error %}
+    <div class="card"><strong style="color:#f87171">Review failed:</strong> {{ error }}</div>
+{% else %}
+    <table>
+        <thead><tr><th>Strategy</th><th>Action</th><th>Old</th><th>New</th><th>Sample</th><th>Win rate</th><th>Reasoning</th></tr></thead>
+        <tbody>
+        {% for r in results %}
+            <tr>
+                <td>{{ r.strategy }}</td>
+                <td>{{ r.action }}</td>
+                <td>{{ r.old_weight if r.old_weight is defined else "-" }}</td>
+                <td>{{ r.new_weight if r.new_weight is defined else "-" }}</td>
+                <td>{{ r.sample_size if r.sample_size is defined else "-" }}</td>
+                <td>{{ "%.0f%%"|format(r.win_rate * 100) if r.win_rate is defined and r.win_rate is not none else "-" }}</td>
+                <td class="muted">{{ r.reasoning if r.reasoning is defined else (r.error if r.error is defined else "") }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="7" class="muted">No strategies were eligible for review.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

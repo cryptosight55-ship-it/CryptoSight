@@ -1,0 +1,24 @@
+<table id="weights-table">
+    <thead>
+        <tr><th>Strategy</th><th>Weight</th><th>Range</th><th>Last adjusted by</th><th>Set manually</th></tr>
+    </thead>
+    <tbody>
+        {% for w in weights %}
+        <tr>
+            <td>{{ w.strategy_name }}</td>
+            <td>{{ "%.3f"|format(w.weight) }}</td>
+            <td class="muted">{{ w.min_weight }} - {{ w.max_weight }}</td>
+            <td class="muted">{{ w.last_adjusted_by }}</td>
+            <td>
+                <form hx-post="/admin/weights/{{ w.id }}" hx-target="#weights-table" hx-swap="outerHTML"
+                      style="display:flex; gap:0.4rem;">
+                    <input type="number" step="0.01" name="weight" value="{{ "%.3f"|format(w.weight) }}">
+                    <button type="submit">Set</button>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted">No strategies registered yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

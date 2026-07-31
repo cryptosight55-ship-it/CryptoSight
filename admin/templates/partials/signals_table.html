@@ -1,0 +1,25 @@
+<table id="signals-table">
+    <thead>
+        <tr>
+            <th>Symbol</th><th>TF</th><th>Direction</th><th>Confidence</th>
+            <th>Entry</th><th>SL</th><th>TP</th><th>Status</th><th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in signals %}
+        <tr>
+            <td>{{ s.symbol }}</td>
+            <td>{{ s.timeframe }}</td>
+            <td class="{{ s.direction|lower }}">{{ s.direction }}</td>
+            <td>{{ "%.0f"|format(s.confidence * 100) }}%</td>
+            <td>{{ s.entry_price or "-" }}</td>
+            <td>{{ s.stop_loss or "-" }}</td>
+            <td>{{ s.take_profit or "-" }}</td>
+            <td>{{ s.status }}</td>
+            <td class="muted">{{ s.created_at.strftime("%Y-%m-%d %H:%M") if s.created_at else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="muted">No signals yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

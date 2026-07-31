@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Adjustment log - CryptoSight Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <h2 style="margin-top:0">Weight adjustment log</h2>
+    <table>
+        <thead><tr><th>When</th><th>Strategy</th><th>Old</th><th>New</th><th>Source</th><th>Sample</th><th>Win rate</th><th>Reasoning</th></tr></thead>
+        <tbody>
+        {% for l in logs %}
+            <tr>
+                <td class="muted">{{ l.created_at.strftime("%Y-%m-%d %H:%M") if l.created_at else "-" }}</td>
+                <td>{{ l.strategy_name }}</td>
+                <td>{{ "%.3f"|format(l.old_weight) }}</td>
+                <td>{{ "%.3f"|format(l.new_weight) }}</td>
+                <td>{{ l.source }}</td>
+                <td>{{ l.sample_size }}</td>
+                <td>{{ "%.0f%%"|format(l.win_rate * 100) if l.win_rate is not none else "-" }}</td>
+                <td class="muted">{{ l.reasoning or "" }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="8" class="muted">No adjustments yet.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

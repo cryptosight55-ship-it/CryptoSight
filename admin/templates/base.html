@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}CryptoSight Admin{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+               background: #0f1115; color: #e5e7eb; margin: 0; }
+        nav { background: #171a21; padding: 1rem 2rem; display: flex; gap: 1.5rem;
+              align-items: center; border-bottom: 1px solid #2a2e37; }
+        nav a { color: #9ca3af; text-decoration: none; font-size: 0.95rem; }
+        nav a:hover, nav a.active { color: #f9fafb; }
+        nav .brand { font-weight: 600; color: #f9fafb; margin-right: 1rem; }
+        main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #2a2e37; font-size: 0.9rem; }
+        th { color: #9ca3af; font-weight: 500; }
+        .buy { color: #34d399; } .sell { color: #f87171; } .hold { color: #9ca3af; }
+        button, input[type=submit] { background: #2563eb; color: white; border: none;
+            padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        button:hover { background: #1d4ed8; }
+        input[type=number], input[type=password] { background: #1f232c; border: 1px solid #2a2e37;
+            color: #e5e7eb; padding: 0.4rem 0.6rem; border-radius: 6px; width: 90px; }
+        .card { background: #171a21; border: 1px solid #2a2e37; border-radius: 10px;
+                padding: 1.25rem; margin-bottom: 1.5rem; }
+        .muted { color: #6b7280; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <span class="brand">CryptoSight</span>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/logs">Weight adjustment log</a>
+        <span style="flex:1"></span>
+        <a href="/admin/logout">Log out</a>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

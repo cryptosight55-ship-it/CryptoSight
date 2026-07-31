@@ -1,0 +1,132 @@
+"""
+Admin panel routes. Server-rendered Jinja2 templates, HTMX for the
+in-page refreshes (signals table, weights table, review results) so
+there's no separate frontend build step -- fits Render's simplest
+deploy path.
+"""
+
+import logging
+
+from fastapi import APIRouter, Request, Form, Depends
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+from config.settings import config
+from database.db import get_session
+from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog
+from admin.auth import check_password, require_login, is_logged_in
+from ai.accuracy_reviewer import review_and_adjust_weights
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+templates = Jinja2Templates(directory="admin/templates")
+
+
+@router.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    if is_logged_in(request):
+        return RedirectResponse(url="/admin", status_code=303)
+    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+
+
+@router.post("/login", response_class=HTMLResponse)
+def login_submit(request: Request, password: str = Form(...)):
+    if check_password(password):
+        request.session["logged_in"] = True
+        return RedirectResponse(url="/admin", status_code=303)
+    return templates.TemplateResponse(
+        "login.html", {"request": request, "error": "Incorrect password."}
+    )
+
+
+@router.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/admin/login", status_code=303)
+
+
+@router.get("", response_class=HTMLResponse)
+def dashboard(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        recent_signals = (
+            session.query(SignalRecord).order_by(SignalRecord.created_at.desc()).limit(20).all()
+        )
+        weights = session.query(StrategyWeight).all()
+    return templates.TemplateResponse(
+        "dashboard.html",
+        {"request": request, "signals": recent_signals, "weights": weights},
+    )
+
+
+@router.get("/signals", response_class=HTMLResponse)
+def signals_partial(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        recent_signals = (
+            session.query(SignalRecord).order_by(SignalRecord.created_at.desc()).limit(50).all()
+        )
+    return templates.TemplateResponse(
+        "partials/signals_table.html", {"request": request, "signals": recent_signals}
+    )
+
+
+@router.get("/weights", response_class=HTMLResponse)
+def weights_partial(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        weights = session.query(StrategyWeight).all()
+    return templates.TemplateResponse(
+        "partials/weights_table.html", {"request": request, "weights": weights}
+    )
+
+
+@router.post("/weights/{weight_id}", response_class=HTMLResponse)
+def update_weight_manually(
+    request: Request, weight_id: int, weight: float = Form(...), _=Depends(require_login)
+):
+    with get_session() as session:
+        sw = session.query(StrategyWeight).get(weight_id)
+        if sw:
+            old = sw.weight
+            sw.weight = max(sw.min_weight, min(sw.max_weight, weight))
+            sw.last_adjusted_by = "manual"
+            session.add(WeightAdjustmentLog(
+                strategy_name=sw.strategy_name,
+                old_weight=old,
+                new_weight=sw.weight,
+                sample_size=0,
+                win_rate=None,
+                reasoning="Manually set from admin panel.",
+                source="manual",
+            ))
+        weights = session.query(StrategyWeight).all()
+    return templates.TemplateResponse(
+        "partials/weights_table.html", {"request": request, "weights": weights}
+    )
+
+
+@router.post("/weights/review", response_class=HTMLResponse)
+def run_ai_review(request: Request, _=Depends(require_login)):
+    try:
+        results = review_and_adjust_weights()
+        error = None
+    except Exception as e:
+        logger.exception("AI weight review pass failed")
+        results = []
+        error = str(e)
+    return templates.TemplateResponse(
+        "partials/review_results.html", {"request": request, "results": results, "error": error}
+    )
+
+
+@router.get("/logs", response_class=HTMLResponse)
+def adjustment_log(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        logs = (
+            session.query(WeightAdjustmentLog)
+            .order_by(WeightAdjustmentLog.created_at.desc())
+            .limit(100)
+            .all()
+        )
+    return templates.TemplateResponse(
+        "logs.html", {"request": request, "logs": logs}
+    )
