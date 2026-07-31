@@ -22,6 +22,7 @@ from database.db import get_session
 from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog
 from admin.auth import check_password, require_login, is_logged_in
 from ai.accuracy_reviewer import review_and_adjust_weights
+from core.scanner import run_scan
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,20 @@ def run_ai_review(request: Request, _=Depends(require_login)):
         error = str(e)
     return templates.TemplateResponse(
         request, "partials/review_results.html", {"results": results, "error": error}
+    )
+
+
+@router.post("/scan/run", response_class=HTMLResponse)
+def trigger_scan(request: Request, _=Depends(require_login)):
+    try:
+        summary = run_scan()
+        error = summary.get("error")
+    except Exception as e:
+        logger.exception("Manual scan trigger failed")
+        summary = {}
+        error = str(e)
+    return templates.TemplateResponse(
+        request, "partials/scan_results.html", {"summary": summary, "error": error}
     )
 
 

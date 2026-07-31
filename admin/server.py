@@ -13,12 +13,16 @@ import logging
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from config.settings import config
 from database.db import init_db, get_session
 from database.models import StrategyWeight
 from admin.routes import router as admin_router
 from api.routes import router as api_router
+from signals.aggregator import ALL_STRATEGIES
+from core.scanner import run_scan
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +38,36 @@ if not config.SECRET_KEY:
     )
 
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
-import os
-os.makedirs("admin/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="admin/static"), name="static")
+
 app.include_router(admin_router)
 app.include_router(api_router)
+
+scheduler = BackgroundScheduler()
 
 
 def _seed_default_strategy_weights():
     """
-    Ensure the existing ML model has a weight row so the admin panel and
-    AI reviewer have something to show/act on immediately. Additional
-    strategies (per the phase-2 plan) register themselves here the same
-    way once they exist -- this function is the one place that needs to
-    grow, nothing else.
+    Ensure every strategy in signals/aggregator.py's ALL_STRATEGIES has a
+    weight row, so the admin panel and AI reviewer always reflect exactly
+    what's actually running. Adding a 6th strategy later means adding it
+    to ALL_STRATEGIES -- it'll get seeded here automatically on next boot,
+    no other change needed.
     """
     with get_session() as session:
         existing = {w.strategy_name for w in session.query(StrategyWeight).all()}
-        if "ml_model" not in existing:
-            session.add(StrategyWeight(strategy_name="ml_model", weight=1.0))
+        for strat in ALL_STRATEGIES:
+            if strat.name not in existing:
+                session.add(StrategyWeight(strategy_name=strat.name, weight=1.0))
+
+
+def _scheduled_scan():
+    logger.info("Running scheduled hourly scan")
+    try:
+        result = run_scan()
+        logger.info(f"Scheduled scan result: {result.get('signals_fired')} signals fired")
+    except Exception:
+        logger.exception("Scheduled scan failed")
 
 
 @app.on_event("startup")
@@ -61,7 +76,21 @@ def on_startup():
     config.ensure_directories()
     init_db()
     _seed_default_strategy_weights()
+
+    # Runs on the hour, every hour (e.g. 13:00, 14:00, ...). A single
+    # in-process scheduler is fine at this scale; if scans start taking
+    # long enough to risk overlapping with the admin panel's own
+    # requests, move this to a separate Render Cron Job / Background
+    # Worker hitting the same database instead.
+    scheduler.add_job(_scheduled_scan, CronTrigger(minute=0), id="hourly_scan", replace_existing=True)
+    scheduler.start()
+
     logger.info("CryptoSight admin app started")
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.shutdown(wait=False)
 
 
 @app.get("/")

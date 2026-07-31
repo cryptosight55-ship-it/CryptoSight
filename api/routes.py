@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from database.db import get_session
 from database.models import SignalRecord, StrategyWeight
 from ai.accuracy_reviewer import review_and_adjust_weights
+from core.scanner import run_scan
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["api"])
@@ -71,4 +72,19 @@ def trigger_review(dry_run: bool = False):
         return {"results": review_and_adjust_weights(dry_run=dry_run)}
     except Exception as e:
         logger.exception("AI review pass failed via API")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scan/run")
+def trigger_scan():
+    """
+    Manually run one scan pass (top 40 coins, 1h candles). Can take a
+    while (network calls per symbol + backtesting for anything that
+    fires) -- this is a synchronous call, so expect this request to be
+    slow, not failed, if it's taking 30-60+ seconds.
+    """
+    try:
+        return run_scan()
+    except Exception as e:
+        logger.exception("Manual scan trigger failed via API")
         raise HTTPException(status_code=500, detail=str(e))

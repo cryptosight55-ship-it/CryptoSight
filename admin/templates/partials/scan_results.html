@@ -1,0 +1,28 @@
+{% if error %}
+    <div class="card"><strong style="color:#f87171">Scan failed:</strong> {{ error }}</div>
+{% else %}
+    <p class="muted">
+        Scanned {{ summary.get("symbols_scanned", 0) }} symbols,
+        {{ summary.get("signals_fired", 0) }} signal(s) fired.
+    </p>
+    <table>
+        <thead><tr><th>Symbol</th><th>Action</th><th>Direction</th><th>Confidence</th><th>Strategies agreeing</th><th>Backtest win rate</th></tr></thead>
+        <tbody>
+        {% for r in summary.get("results", []) %}
+            {% if r.action == "signal_fired" %}
+            <tr>
+                <td>{{ r.symbol }}</td>
+                <td>{{ r.action }}</td>
+                <td class="{{ r.direction|lower }}">{{ r.direction }}</td>
+                <td>{{ "%.0f%%"|format(r.confidence * 100) }}</td>
+                <td class="muted">{{ r.strategies_agreeing|join(", ") }}</td>
+                <td>{{ "%.0f%%"|format(r.backtest_win_rate * 100) if r.backtest_win_rate is not none else "n/a" }}</td>
+            </tr>
+            {% endif %}
+        {% else %}
+            <tr><td colspan="6" class="muted">No results.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="muted">Symbols with no signal or errors aren't listed individually here — check the Render logs for the full per-symbol breakdown.</p>
+{% endif %}

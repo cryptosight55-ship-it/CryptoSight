@@ -3,6 +3,19 @@
 {% block content %}
 
 <div class="card">
+    <h2 style="margin-top:0">Scanner</h2>
+    <p class="muted">Runs automatically every hour on the hour: top 40 USDT pairs by 24h volume,
+        1h candles, needs 3 of 5 strategies to agree before a signal fires. You can also trigger
+        it manually here — this can take a while (up to a minute or more), it's not stuck.</p>
+    <button hx-post="/admin/scan/run" hx-target="#scan-results" hx-swap="innerHTML"
+            hx-indicator="#scan-spinner">
+        Run scan now
+    </button>
+    <span id="scan-spinner" class="htmx-indicator muted">Scanning 40 symbols, this can take a minute...</span>
+    <div id="scan-results" style="margin-top:1rem"></div>
+</div>
+
+<div class="card">
     <h2 style="margin-top:0">Strategy weights</h2>
     <p class="muted">The AI reviews recent closed signals per strategy and proposes weight
         adjustments, bounded to &plusmn;20% per run and clamped to each strategy's
