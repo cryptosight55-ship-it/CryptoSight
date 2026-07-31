@@ -24,7 +24,7 @@ class Config:
 
     # API Settings
     EXCHANGE = 'binance'
-    EXCHANGE_OPTIONS = {'options': {'defaultType': 'spot'}}
+    EXCHANGE_OPTIONS = {'enableRateLimit': True, 'options': {'defaultType': 'spot'}}
 
     # Data Paths
     DATA_DIR = "data"

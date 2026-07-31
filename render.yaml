@@ -3,11 +3,12 @@ services:
     name: cryptosight
     runtime: docker
     dockerfilePath: ./Dockerfile
-    region: frankfurt
+    region: frankfurt  # Binance.com blocks US-based IPs (the Render default,
+                        # oregon, is US) -- this is what caused the 451 error.
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false
+        sync: false  # paste your Neon connection string in the Render dashboard
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD

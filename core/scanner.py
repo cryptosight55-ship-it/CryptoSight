@@ -13,6 +13,8 @@ manually from the admin panel or POST /api/scan/run.
 import logging
 from datetime import datetime, timezone
 
+import ccxt
+
 from data.fetcher import get_data_fetcher
 from signals.aggregator import aggregate
 from backtesting.quick_backtest import quick_backtest
@@ -119,31 +121,39 @@ def _process_symbol(symbol: str) -> dict:
 def run_scan() -> dict:
     """Runs one full scan pass. Returns a summary dict for logging/API/admin display."""
     started_at = datetime.now(timezone.utc)
-    fetcher = get_data_fetcher()
 
     try:
+        fetcher = get_data_fetcher()
         symbols = fetcher.get_top_coins(limit=TOP_N_COINS)
     except Exception as e:
-        logger.error(f"Failed to get top coins for scan: {e}")
+        logger.error(f"Failed to initialize exchange / get top coins for scan: {e}")
         return {"error": str(e), "started_at": started_at.isoformat()}
 
     results = []
     for symbol in symbols:
         try:
             results.append(_process_symbol(symbol))
+        except (ccxt.DDoSProtection, ccxt.RateLimitExceeded) as e:
+            # Binance is actively throttling/banning us -- stop immediately
+            # rather than burning through the remaining symbols into the
+            # same wall, which only makes any ban last longer.
+            logger.error(f"Exchange rate-limited/banned mid-scan at {symbol}, stopping scan: {e}")
+            results.append({"symbol": symbol, "action": "error", "error": str(e)})
+            break
         except Exception as e:
             logger.exception(f"Scan failed for {symbol}")
             results.append({"symbol": symbol, "action": "error", "error": str(e)})
 
     signals_fired = [r for r in results if r.get("action") == "signal_fired"]
     logger.info(
-        f"Scan complete: {len(symbols)} symbols scanned, {len(signals_fired)} signals fired"
+        f"Scan complete: {len(results)}/{len(symbols)} symbols processed, "
+        f"{len(signals_fired)} signals fired"
     )
 
     return {
         "started_at": started_at.isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
-        "symbols_scanned": len(symbols),
+        "symbols_scanned": len(results),
         "signals_fired": len(signals_fired),
         "results": results,
     }

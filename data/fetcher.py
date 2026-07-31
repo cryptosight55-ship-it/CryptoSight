@@ -156,16 +156,19 @@ class DataFetcher:
                 logger.debug(f"✅ Fetched {len(df)} candles for {symbol} {timeframe}")
                 return df
                 
+            except ccxt.DDoSProtection as e:
+                # Covers ccxt.RateLimitExceeded too (it's a subclass).
+                # Binance has actively throttled or banned this IP -- don't
+                # retry, that only makes the ban worse. Let it propagate so
+                # the caller (core/scanner.py's run_scan) can abort the
+                # whole scan instead of hitting this same wall 39 more times.
+                logger.error(f"🚫 Exchange is throttling/has banned this IP fetching {symbol}: {e}")
+                raise
+
             except ccxt.NetworkError as e:
                 logger.warning(f"🌐 Network error for {symbol} (attempt {attempt + 1}): {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (attempt + 1))
-                    continue
-                    
-            except ccxt.RateLimitExceeded as e:
-                logger.warning(f"⏰ Rate limit exceeded for {symbol} (attempt {attempt + 1})")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay * 5)  # Longer delay for rate limits
                     continue
                     
             except Exception as e:
