@@ -34,8 +34,9 @@ if not config.SECRET_KEY:
     )
 
 app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
+import os
+os.makedirs("admin/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="admin/static"), name="static")
-
 app.include_router(admin_router)
 app.include_router(api_router)
 
