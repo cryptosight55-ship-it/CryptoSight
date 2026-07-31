@@ -3,10 +3,11 @@ services:
     name: cryptosight
     runtime: docker
     dockerfilePath: ./Dockerfile
+    region: frankfurt
     plan: free
     envVars:
       - key: DATABASE_URL
-        sync: false  # paste your Neon connection string in the Render dashboard
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD
