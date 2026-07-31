@@ -71,16 +71,18 @@ signal-generation engine itself (still phase-3 work — see the end of
 ## Deploying
 
 1. Push this repo to your new GitHub repo.
-2. On Render: **New > Blueprint**, point it at the repo — it'll read
-   `render.yaml` and provision the web service + Postgres together.
-3. Set the `sync: false` env vars in the Render dashboard (they're not
-   auto-generated): `ADMIN_PASSWORD`, `DISCORD_WEBHOOK`,
-   `OPENROUTER_API_KEY`. `SECRET_KEY` and `DATABASE_URL` are generated
-   automatically by the blueprint.
-4. First deploy will build the Docker image (TA-Lib compiles from
+2. Create a database on [Neon](https://neon.tech) (free tier) and copy its
+   connection string.
+3. On Render: **New > Blueprint**, point it at the repo — it'll read
+   `render.yaml` and provision the web service.
+4. Set the `sync: false` env vars in the Render dashboard (they're not
+   auto-generated): `DATABASE_URL` (your Neon connection string),
+   `ADMIN_PASSWORD`, `DISCORD_WEBHOOK`, `OPENROUTER_API_KEY`.
+   `SECRET_KEY` is generated automatically by the blueprint.
+5. First deploy will build the Docker image (TA-Lib compiles from
    source — expect the first build to take a few minutes longer than
    subsequent ones).
-5. Visit `/admin`, log in with `ADMIN_PASSWORD`.
+6. Visit `/admin`, log in with `ADMIN_PASSWORD`.
 
 ## Local dev
 
