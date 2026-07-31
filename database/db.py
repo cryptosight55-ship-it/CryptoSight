@@ -23,7 +23,12 @@ if _db_url.startswith("postgres://"):
 _connect_args = {"check_same_thread": False} if _db_url.startswith("sqlite") else {}
 
 engine = create_engine(_db_url, connect_args=_connect_args, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+# expire_on_commit=False: routes query objects inside `with get_session()`
+# and then hand them to a Jinja template *after* the session has closed
+# (e.g. admin/routes.py). Without this, SQLAlchemy expires every loaded
+# attribute on commit, and touching one after the session is closed raises
+# DetachedInstanceError. This keeps already-loaded values usable post-close.
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 Base = declarative_base()
 
