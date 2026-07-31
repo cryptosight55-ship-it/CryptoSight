@@ -3,6 +3,12 @@ Admin panel routes. Server-rendered Jinja2 templates, HTMX for the
 in-page refreshes (signals table, weights table, review results) so
 there's no separate frontend build step -- fits Render's simplest
 deploy path.
+
+NOTE: TemplateResponse calls use the current Starlette signature
+(`templates.TemplateResponse(request, "name.html", {...})`), not the
+older `TemplateResponse("name.html", {"request": request, ...})` style.
+The older style triggered a `TypeError: unhashable type: 'dict'` on
+recent Starlette versions -- keep using the request-first form here.
 """
 
 import logging
@@ -27,7 +33,7 @@ templates = Jinja2Templates(directory="admin/templates")
 def login_page(request: Request):
     if is_logged_in(request):
         return RedirectResponse(url="/admin", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @router.post("/login", response_class=HTMLResponse)
@@ -36,7 +42,7 @@ def login_submit(request: Request, password: str = Form(...)):
         request.session["logged_in"] = True
         return RedirectResponse(url="/admin", status_code=303)
     return templates.TemplateResponse(
-        "login.html", {"request": request, "error": "Incorrect password."}
+        request, "login.html", {"error": "Incorrect password."}
     )
 
 
@@ -54,8 +60,9 @@ def dashboard(request: Request, _=Depends(require_login)):
         )
         weights = session.query(StrategyWeight).all()
     return templates.TemplateResponse(
+        request,
         "dashboard.html",
-        {"request": request, "signals": recent_signals, "weights": weights},
+        {"signals": recent_signals, "weights": weights},
     )
 
 
@@ -66,7 +73,7 @@ def signals_partial(request: Request, _=Depends(require_login)):
             session.query(SignalRecord).order_by(SignalRecord.created_at.desc()).limit(50).all()
         )
     return templates.TemplateResponse(
-        "partials/signals_table.html", {"request": request, "signals": recent_signals}
+        request, "partials/signals_table.html", {"signals": recent_signals}
     )
 
 
@@ -75,7 +82,7 @@ def weights_partial(request: Request, _=Depends(require_login)):
     with get_session() as session:
         weights = session.query(StrategyWeight).all()
     return templates.TemplateResponse(
-        "partials/weights_table.html", {"request": request, "weights": weights}
+        request, "partials/weights_table.html", {"weights": weights}
     )
 
 
@@ -100,7 +107,7 @@ def update_weight_manually(
             ))
         weights = session.query(StrategyWeight).all()
     return templates.TemplateResponse(
-        "partials/weights_table.html", {"request": request, "weights": weights}
+        request, "partials/weights_table.html", {"weights": weights}
     )
 
 
@@ -114,7 +121,7 @@ def run_ai_review(request: Request, _=Depends(require_login)):
         results = []
         error = str(e)
     return templates.TemplateResponse(
-        "partials/review_results.html", {"request": request, "results": results, "error": error}
+        request, "partials/review_results.html", {"results": results, "error": error}
     )
 
 
@@ -128,5 +135,5 @@ def adjustment_log(request: Request, _=Depends(require_login)):
             .all()
         )
     return templates.TemplateResponse(
-        "logs.html", {"request": request, "logs": logs}
+        request, "logs.html", {"logs": logs}
     )
