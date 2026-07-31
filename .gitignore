@@ -40,8 +40,8 @@ Thumbs.db
 logs/
 *.log
 
-# Data files
-data/
+# Data files (CSV/pkl dumps wherever they land -- NOT the data/ package,
+# which holds real source code: data/fetcher.py)
 models/
 *.pkl
 *.csv
