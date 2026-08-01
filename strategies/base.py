@@ -27,6 +27,19 @@ class Strategy(ABC):
     #: Short, stable identifier used in logs, weights config, and alerts.
     name: str = "unnamed_strategy"
 
+    def is_active(self) -> bool:
+        """
+        Override to return False when a strategy structurally cannot
+        contribute right now (e.g. no model file loaded) -- as opposed
+        to analyzing the market and concluding HOLD, which is a real
+        opinion and should count normally. signals/aggregator.py uses
+        this to exclude permanently-inert strategies from the confidence
+        denominator, so their configured weight can't silently deflate
+        every signal's confidence just by existing in the roster.
+        Default True: most strategies can always form an opinion.
+        """
+        return True
+
     @abstractmethod
     def analyze(self, symbol: str, timeframe: str, candles: pd.DataFrame) -> StrategyResult:
         """

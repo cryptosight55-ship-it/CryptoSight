@@ -145,7 +145,7 @@ def aggregate(
     else:
         return None
 
-    total_possible_weight = sum(effective_weight(s.name) for s in ALL_STRATEGIES)
+    total_possible_weight = sum(effective_weight(s.name) for s in ALL_STRATEGIES if s.is_active())
     weighted_sum = sum(r.confidence * effective_weight(r.strategy_name) for r in agreeing)
     base_confidence = float(min(weighted_sum / total_possible_weight, 1.0)) if total_possible_weight else 0.0
 

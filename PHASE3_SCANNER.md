@@ -78,8 +78,15 @@ of the hour.
 
 ## What's still open
 
-- No real ML model file deployed (see above) — the 5th strategy is
-  currently a permanent HOLD.
+- No real ML model file deployed — the old training-pipeline outputs
+  this system originally shipped with were lost (accidentally deleted
+  locally before ever being uploaded here). Current plan: run the
+  scanner for about a month on the 4 rule-based strategies, then train a
+  fresh model on the `SignalRecord` history this system generates itself
+  — better provenance than reviving old files of unknown vintage anyway.
+  The 5th strategy stays wired in and silently returns HOLD until then
+  (log noise from this was fixed — it now only logs once per process
+  instead of once per symbol per scan).
 - `risk/` is still empty — position sizing, max exposure, and the rest of
   the brief's risk-management list aren't built. ATR-based stops are the
   only risk logic in place right now, folded into the aggregator itself
