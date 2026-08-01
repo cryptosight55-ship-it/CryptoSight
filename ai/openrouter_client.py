@@ -92,9 +92,21 @@ class OpenRouterClient:
 
         data = resp.json()
         try:
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as e:
             raise OpenRouterError(f"Unexpected OpenRouter response shape: {data}") from e
+
+        if content is None:
+            # Some free models (reasoning models, refusals, certain
+            # routed models under openrouter/free) return a present but
+            # null content field instead of omitting it -- this is what
+            # crashed a scan with 'NoneType' has no attribute 'strip' in
+            # ai/signal_explainer.py before this check existed. Treat it
+            # as a proper OpenRouterError so callers that already handle
+            # that (like explain_signal) degrade gracefully instead.
+            raise OpenRouterError(f"OpenRouter returned null content: {data}")
+
+        return content
 
     def chat_json(self, messages: List[Dict[str, str]], **kwargs) -> dict:
         """Same as chat(), but parses the response as JSON. Raises OpenRouterError on bad JSON."""

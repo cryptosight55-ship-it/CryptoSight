@@ -92,13 +92,23 @@ def _process_symbol(symbol: str) -> dict:
 
     ai_explanation = None
     if openrouter_client.is_configured():
-        ai_explanation = explain_signal(
-            symbol=symbol,
-            direction=signal["direction"].value,
-            confidence=signal["confidence"],
-            reasons=signal["reasons"],
-            timeframe=SCAN_TIMEFRAME,
-        )
+        # ai_explanation is purely cosmetic (see ai/signal_explainer.py's
+        # own docstring) -- it must never be able to prevent the actual
+        # signal from being saved/alerted below. explain_signal() already
+        # catches OpenRouterError internally and returns None, but this
+        # extra try/except is a structural guarantee against ANY failure
+        # here (known or not) blocking the real save+alert path, not just
+        # the one specific null-content bug that prompted adding it.
+        try:
+            ai_explanation = explain_signal(
+                symbol=symbol,
+                direction=signal["direction"].value,
+                confidence=signal["confidence"],
+                reasons=signal["reasons"],
+                timeframe=SCAN_TIMEFRAME,
+            )
+        except Exception as e:
+            logger.warning(f"AI explanation failed unexpectedly for {symbol}, continuing without it: {e}")
 
     metadata = {
         "atr": signal["atr"],
