@@ -12,6 +12,7 @@ from database.db import get_session
 from database.models import SignalRecord, StrategyWeight
 from ai.accuracy_reviewer import review_and_adjust_weights
 from core.scanner import run_scan
+from learning.outcome_resolver import resolve_pending_signals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["api"])
@@ -87,4 +88,13 @@ def trigger_scan():
         return run_scan()
     except Exception as e:
         logger.exception("Manual scan trigger failed via API")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/outcomes/resolve")
+def trigger_resolve_outcomes():
+    try:
+        return resolve_pending_signals()
+    except Exception as e:
+        logger.exception("Manual outcome resolution failed via API")
         raise HTTPException(status_code=500, detail=str(e))

@@ -32,3 +32,28 @@ class StrategyResult:
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AnalystOpinion:
+    """
+    Richer output shape for the phase-4 Context Intelligence Layer and
+    (eventually) the multi-agent system -- a superset of StrategyResult.
+    Not a replacement: the 5 existing rule/ML strategies still produce
+    StrategyResult, and nothing forces them onto this. This exists so
+    context providers and any future analyst have a place to put
+    evidence/risk/entry-style detail that StrategyResult was never
+    designed to carry, without a breaking change to what's already
+    shipped and working.
+    """
+
+    source_name: str
+    source_type: str  # "technical" | "context" | "chief_agent"
+    direction: SignalDirection
+    confidence: float
+    evidence: List[str] = field(default_factory=list)
+    reasoning: str = ""
+    risks: List[str] = field(default_factory=list)
+    invalidation_conditions: List[str] = field(default_factory=list)
+    preferred_entry_style: Optional[str] = None
+    expected_holding_time: Optional[str] = None

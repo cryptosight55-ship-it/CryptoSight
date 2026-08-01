@@ -23,6 +23,7 @@ from admin.routes import router as admin_router
 from api.routes import router as api_router
 from signals.aggregator import ALL_STRATEGIES
 from core.scanner import run_scan
+from learning.outcome_resolver import resolve_pending_signals
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,15 @@ def _scheduled_scan():
         logger.exception("Scheduled scan failed")
 
 
+def _scheduled_resolve_outcomes():
+    logger.info("Running scheduled outcome resolution")
+    try:
+        result = resolve_pending_signals()
+        logger.info(f"Scheduled outcome resolution: {result.get('resolved')} resolved")
+    except Exception:
+        logger.exception("Scheduled outcome resolution failed")
+
+
 @app.on_event("startup")
 def on_startup():
     config.setup_logging()
@@ -83,6 +93,12 @@ def on_startup():
     # requests, move this to a separate Render Cron Job / Background
     # Worker hitting the same database instead.
     scheduler.add_job(_scheduled_scan, CronTrigger(minute=0), id="hourly_scan", replace_existing=True)
+    # Offset by 15 minutes so it doesn't compete with the scan job on
+    # the same tick. Runs more often than signals actually need
+    # resolving (most won't be eligible yet -- MIN_AGE_BEFORE_CHECKING
+    # in learning/outcome_resolver.py), which is fine, it's a cheap no-op
+    # for anything not old enough yet.
+    scheduler.add_job(_scheduled_resolve_outcomes, CronTrigger(minute=15), id="resolve_outcomes", replace_existing=True)
     scheduler.start()
 
     logger.info("CryptoSight admin app started")

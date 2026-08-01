@@ -1,0 +1,22 @@
+{% if error %}
+    <div class="card"><strong style="color:#f87171">Resolution failed:</strong> {{ error }}</div>
+{% else %}
+    <p class="muted">
+        Checked {{ summary.get("checked", 0) }} pending, {{ summary.get("eligible", 0) }} old
+        enough to evaluate, {{ summary.get("resolved", 0) }} resolved.
+    </p>
+    <table>
+        <thead><tr><th>Symbol</th><th>Result</th><th>P&L</th></tr></thead>
+        <tbody>
+        {% for r in summary.get("results", []) %}
+            <tr>
+                <td>{{ r.symbol }}</td>
+                <td class="{{ 'buy' if r.status == 'win' else ('sell' if r.status == 'loss' else 'hold') }}">{{ r.status }}</td>
+                <td>{{ "%.2f%%"|format(r.pnl_pct) if r.pnl_pct is not none else "-" }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="3" class="muted">Nothing resolved this pass.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

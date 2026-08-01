@@ -23,6 +23,7 @@ from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog
 from admin.auth import check_password, require_login, is_logged_in
 from ai.accuracy_reviewer import review_and_adjust_weights
 from core.scanner import run_scan
+from learning.outcome_resolver import resolve_pending_signals
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,20 @@ def trigger_scan(request: Request, _=Depends(require_login)):
         error = str(e)
     return templates.TemplateResponse(
         request, "partials/scan_results.html", {"summary": summary, "error": error}
+    )
+
+
+@router.post("/outcomes/resolve", response_class=HTMLResponse)
+def trigger_resolve_outcomes(request: Request, _=Depends(require_login)):
+    try:
+        summary = resolve_pending_signals()
+        error = None
+    except Exception as e:
+        logger.exception("Manual outcome resolution failed")
+        summary = {}
+        error = str(e)
+    return templates.TemplateResponse(
+        request, "partials/resolve_results.html", {"summary": summary, "error": error}
     )
 
 

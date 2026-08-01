@@ -3,6 +3,19 @@
 {% block content %}
 
 <div class="card">
+    <h2 style="margin-top:0">Signal outcomes</h2>
+    <p class="muted">Resolves pending signals to win/loss/expired by checking whether stop-loss
+        or take-profit hit first. Runs automatically 15 minutes past every hour; the AI weight
+        reviewer has nothing to work with until this has resolved enough signals.</p>
+    <button hx-post="/admin/outcomes/resolve" hx-target="#resolve-results" hx-swap="innerHTML"
+            hx-indicator="#resolve-spinner">
+        Resolve pending signals now
+    </button>
+    <span id="resolve-spinner" class="htmx-indicator muted">Checking pending signals...</span>
+    <div id="resolve-results" style="margin-top:1rem"></div>
+</div>
+
+<div class="card">
     <h2 style="margin-top:0">Scanner</h2>
     <p class="muted">Runs automatically every hour on the hour: top 40 USDT pairs by 24h volume,
         1h candles, needs 3 of 5 strategies to agree before a signal fires. You can also trigger

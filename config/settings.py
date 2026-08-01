@@ -101,11 +101,14 @@ class Config:
     # falls back to a local SQLite file so the app still runs without one)
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cryptosight.db")
 
-    # AI (OpenRouter) -- free models rotate constantly, so this is
-    # deliberately just a documented default, not a guarantee it's still
-    # free/available. Check https://openrouter.ai/models before deploying.
+    # AI (OpenRouter) -- free models rotate constantly (an entire free
+    # tier can get delisted with no warning, as happened to
+    # llama-3.3-70b-instruct:free in July 2026). Default to OpenRouter's
+    # own auto-router, which exists specifically to survive that: it
+    # picks a currently-free model for you. Override with a specific
+    # model ID via OPENROUTER_MODEL if you want to pin one deliberately.
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
     OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
     AI_SITE_URL = os.getenv("AI_SITE_URL", "https://cryptosight.example.com")
     AI_SITE_NAME = os.getenv("AI_SITE_NAME", "CryptoSight")

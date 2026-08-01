@@ -18,6 +18,7 @@ import ccxt
 from data.fetcher import get_data_fetcher
 from signals.aggregator import aggregate
 from backtesting.quick_backtest import quick_backtest
+from context.aggregator import gather_context
 from database.db import get_session
 from database.models import SignalRecord
 from alerts.discord_alerts import alert_manager
@@ -57,9 +58,25 @@ def _process_symbol(symbol: str) -> dict:
     if candles is None or len(candles) < 60:
         return {"symbol": symbol, "action": "skipped_insufficient_data"}
 
-    signal = aggregate(symbol, SCAN_TIMEFRAME, candles)
-    if signal is None:
+    # First pass: no context. This decides whether a signal exists at
+    # all (the 3-of-5 technical gate + regime weighting) without any
+    # extra API calls. Context data (funding rate, order book, etc.) is
+    # only fetched for symbols that already cleared this gate -- same
+    # reasoning as quick_backtest being scoped to firing symbols only:
+    # bound the request volume, learned the hard way from an earlier
+    # Binance rate-limit ban in this project.
+    preliminary = aggregate(symbol, SCAN_TIMEFRAME, candles)
+    if preliminary is None:
         return {"symbol": symbol, "action": "no_signal"}
+
+    context_signals = gather_context(symbol)
+    signal = aggregate(symbol, SCAN_TIMEFRAME, candles, context_signals=context_signals)
+    if signal is None:
+        # Shouldn't happen -- context never changes the gate decision,
+        # only the confidence score -- but fall back defensively rather
+        # than lose a signal that already cleared the gate once.
+        logger.warning(f"Signal for {symbol} disappeared on second aggregate() pass, using first pass")
+        signal = preliminary
 
     backtest_result = quick_backtest(symbol, SCAN_TIMEFRAME, candles)
 
@@ -76,6 +93,9 @@ def _process_symbol(symbol: str) -> dict:
     metadata = {
         "atr": signal["atr"],
         "backtest": backtest_result,
+        "regime": signal.get("regime"),
+        "base_confidence": signal.get("base_confidence"),
+        "context_evidence": signal.get("context_evidence", []),
         "strategy_details": [
             {
                 "strategy": r.strategy_name,
