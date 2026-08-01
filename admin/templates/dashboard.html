@@ -19,7 +19,9 @@
     <h2 style="margin-top:0">Scanner</h2>
     <p class="muted">Runs automatically every hour on the hour: top 40 USDT pairs by 24h volume,
         1h candles, needs 3 of 5 strategies to agree before a signal fires. You can also trigger
-        it manually here — this can take a while (up to a minute or more), it's not stuck.</p>
+        it manually here — this can take a while (up to a minute or more), it's not stuck.
+        Manual triggers are limited to once every 5 minutes to protect against exhausting
+        Binance's rate limit; the scheduled hourly scan is unaffected by this.</p>
     <button hx-post="/admin/scan/run" hx-target="#scan-results" hx-swap="innerHTML"
             hx-indicator="#scan-spinner">
         Run scan now

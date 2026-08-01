@@ -65,7 +65,7 @@ def _seed_default_strategy_weights():
 def _scheduled_scan():
     logger.info("Running scheduled hourly scan")
     try:
-        result = run_scan()
+        result = run_scan(bypass_cooldown=True)
         logger.info(f"Scheduled scan result: {result.get('signals_fired')} signals fired")
     except Exception:
         logger.exception("Scheduled scan failed")

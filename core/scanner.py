@@ -11,7 +11,8 @@ manually from the admin panel or POST /api/scan/run.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from typing import Optional
 
 import ccxt
 
@@ -32,6 +33,15 @@ TOP_N_COINS = 40
 SCAN_TIMEFRAME = "1h"
 CANDLE_LOOKBACK = 500
 ALERT_DURATION_HOURS = 24  # matches backtesting.quick_backtest.LOOKFORWARD_BARS on 1h candles
+
+# Binance's rate-limit windows are longer than a minute -- two full scans
+# close together (e.g. manual testing right after the hourly one) can
+# exhaust the budget before it resets, even though each individual scan
+# paces itself correctly. This cooldown is a blunt but effective guard
+# against exactly that pattern. In-memory only (resets on redeploy),
+# which is fine at single-instance scale (WEB_CONCURRENCY=1).
+MIN_SCAN_INTERVAL_SECONDS = 300
+_last_scan_started_at: Optional[datetime] = None
 
 
 def _build_discord_payload(signal: dict) -> dict:
@@ -138,9 +148,32 @@ def _process_symbol(symbol: str) -> dict:
     }
 
 
-def run_scan() -> dict:
-    """Runs one full scan pass. Returns a summary dict for logging/API/admin display."""
+def run_scan(bypass_cooldown: bool = False) -> dict:
+    """
+    Runs one full scan pass. Returns a summary dict for logging/API/admin
+    display.
+
+    bypass_cooldown=True is used by the scheduled hourly job (see
+    admin/server.py), which is already spaced an hour apart by
+    definition and shouldn't ever be blocked by this. The cooldown exists
+    to stop rapid manual re-triggering (e.g. testing) from exhausting
+    Binance's rate-limit budget before it resets -- exactly what happened
+    between two manual scans 9 minutes apart earlier in this project.
+    """
+    global _last_scan_started_at
     started_at = datetime.now(timezone.utc)
+
+    if not bypass_cooldown and _last_scan_started_at is not None:
+        elapsed = (started_at - _last_scan_started_at).total_seconds()
+        if elapsed < MIN_SCAN_INTERVAL_SECONDS:
+            wait_more = MIN_SCAN_INTERVAL_SECONDS - elapsed
+            return {
+                "error": f"Scan ran {elapsed:.0f}s ago -- wait {wait_more:.0f}s more before "
+                         f"triggering another one (protects against exhausting Binance's rate limit).",
+                "started_at": started_at.isoformat(),
+            }
+
+    _last_scan_started_at = started_at
 
     try:
         fetcher = get_data_fetcher()

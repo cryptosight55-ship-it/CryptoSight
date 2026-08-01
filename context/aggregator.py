@@ -11,11 +11,15 @@ from typing import List, Optional
 from context.base import ContextProvider
 from context.types import ContextSignal
 from context.providers.microstructure import MicrostructureProvider
+from context.providers.fear_greed import FearGreedProvider
+from context.providers.crypto_news import CryptoNewsProvider
 
 logger = logging.getLogger(__name__)
 
 PROVIDERS: List[ContextProvider] = [
     MicrostructureProvider(),
+    FearGreedProvider(),
+    CryptoNewsProvider(),
 ]
 
 

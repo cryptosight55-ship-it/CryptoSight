@@ -82,9 +82,11 @@ context (only for the handful that already qualified). Same pattern
 
 ## What's still ahead (per the roadmap doc)
 
-- Phase 4b: nightly review job producing `LearnedInsight` records from
-  grouped win-rate statistics (strategy × regime), Fear & Greed +
-  crypto news providers (both free).
+- Phase 4b, remaining piece: nightly review job producing `LearnedInsight`
+  records from grouped win-rate statistics -- deliberately held back until
+  there's real resolved-signal history to analyze (see below). The two
+  free context providers (Fear & Greed, crypto news) are done -- see
+  `PHASE4B_FREE_PROVIDERS.md`.
 - Phase 4c: `ai_briefing` synthesis step, and a decision point on a
   macro-calendar data source.
 - Phase 4d: on-chain and social providers — gated on picking (and
