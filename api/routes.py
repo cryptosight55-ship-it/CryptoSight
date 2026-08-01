@@ -50,6 +50,32 @@ def list_signals(limit: int = 50):
         ]
 
 
+@router.get("/signals/{signal_id}")
+def get_signal(signal_id: int):
+    with get_session() as session:
+        r = session.query(SignalRecord).get(signal_id)
+        if r is None:
+            raise HTTPException(status_code=404, detail="Signal not found")
+        return {
+            "id": r.id,
+            "symbol": r.symbol,
+            "timeframe": r.timeframe,
+            "direction": r.direction,
+            "confidence": r.confidence,
+            "entry_price": r.entry_price,
+            "stop_loss": r.stop_loss,
+            "take_profit": r.take_profit,
+            "strategies_agreeing": r.strategies_agreeing,
+            "reasons": r.reasons,
+            "metadata": r.metadata_json,
+            "status": r.status,
+            "pnl_pct": r.pnl_pct,
+            "ai_explanation": r.ai_explanation,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "closed_at": r.closed_at.isoformat() if r.closed_at else None,
+        }
+
+
 @router.get("/strategies/weights")
 def list_weights():
     with get_session() as session:

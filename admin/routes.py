@@ -68,6 +68,15 @@ def dashboard(request: Request, _=Depends(require_login)):
     )
 
 
+@router.get("/signals/{signal_id}", response_class=HTMLResponse)
+def signal_detail(request: Request, signal_id: int, _=Depends(require_login)):
+    with get_session() as session:
+        record = session.query(SignalRecord).get(signal_id)
+    if record is None:
+        return HTMLResponse("Signal not found", status_code=404)
+    return templates.TemplateResponse(request, "signal_detail.html", {"s": record})
+
+
 @router.get("/signals", response_class=HTMLResponse)
 def signals_partial(request: Request, _=Depends(require_login)):
     with get_session() as session:

@@ -8,7 +8,7 @@
     <tbody>
         {% for s in signals %}
         <tr>
-            <td>{{ s.symbol }}</td>
+            <td><a href="/admin/signals/{{ s.id }}">{{ s.symbol }}</a></td>
             <td>{{ s.timeframe }}</td>
             <td class="{{ s.direction|lower }}">{{ s.direction }}</td>
             <td>{{ "%.0f"|format(s.confidence * 100) }}%</td>

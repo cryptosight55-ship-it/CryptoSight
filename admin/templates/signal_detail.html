@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ s.symbol }} - Signal Detail{% endblock %}
+{% block content %}
+
+<p><a href="/admin" class="muted">&larr; Back to dashboard</a></p>
+
+<div class="card">
+    <h2 style="margin-top:0">{{ s.symbol }} <span class="{{ s.direction|lower }}">{{ s.direction }}</span></h2>
+    <table>
+        <tr><th>Timeframe</th><td>{{ s.timeframe }}</td></tr>
+        <tr><th>Confidence</th><td>{{ "%.0f%%"|format(s.confidence * 100) }}</td></tr>
+        <tr><th>Entry</th><td>{{ s.entry_price }}</td></tr>
+        <tr><th>Stop loss</th><td>{{ s.stop_loss }}</td></tr>
+        <tr><th>Take profit</th><td>{{ s.take_profit }}</td></tr>
+        <tr><th>Status</th><td>{{ s.status }}</td></tr>
+        <tr><th>P&amp;L</th><td>{{ "%.2f%%"|format(s.pnl_pct) if s.pnl_pct is not none else "-" }}</td></tr>
+        <tr><th>Created</th><td class="muted">{{ s.created_at.strftime("%Y-%m-%d %H:%M UTC") if s.created_at else "-" }}</td></tr>
+        <tr><th>Closed</th><td class="muted">{{ s.closed_at.strftime("%Y-%m-%d %H:%M UTC") if s.closed_at else "-" }}</td></tr>
+    </table>
+</div>
+
+{% set meta = s.metadata_json or {} %}
+
+<div class="card">
+    <h2 style="margin-top:0">Strategies that agreed</h2>
+    <p class="muted">{{ (s.strategies_agreeing or [])|join(", ") }}</p>
+    {% for reason in (s.reasons or []) %}
+        <p>&bull; {{ reason }}</p>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Every strategy's individual opinion</h2>
+    <table>
+        <thead><tr><th>Strategy</th><th>Signal</th><th>Confidence</th><th>Reasons</th></tr></thead>
+        <tbody>
+        {% for d in meta.get("strategy_details", []) %}
+            <tr>
+                <td>{{ d.strategy }}</td>
+                <td class="{{ d.signal|lower }}">{{ d.signal }}</td>
+                <td>{{ "%.0f%%"|format(d.confidence * 100) }}</td>
+                <td class="muted">{{ (d.reasons or [])|join("; ") }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" class="muted">Not recorded for this signal.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Regime &amp; context at signal time</h2>
+    <p><strong>Regime:</strong>
+        {% set regime = meta.get("regime") %}
+        {% if regime and regime.get("regimes") %}
+            {{ regime.get("regimes")|join(", ") }}
+            <span class="muted">(ADX {{ regime.get("adx") }}, vol percentile {{ regime.get("vol_percentile") }})</span>
+        {% else %}
+            <span class="muted">not recorded / not enough history at the time</span>
+        {% endif %}
+    </p>
+    <p><strong>Base confidence before context adjustment:</strong>
+        {{ "%.0f%%"|format(meta.get("base_confidence", 0) * 100) if meta.get("base_confidence") is not none else "-" }}
+    </p>
+    <p><strong>Context evidence used:</strong></p>
+    {% for e in meta.get("context_evidence", []) %}
+        <p>&bull; {{ e }}</p>
+    {% else %}
+        <p class="muted">None recorded for this signal.</p>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2 style="margin-top:0">Quick backtest at signal time</h2>
+    {% set bt = meta.get("backtest") %}
+    {% if bt %}
+        <p>Sample size: {{ bt.get("sample_size") }} &middot;
+           Win rate: {{ "%.0f%%"|format(bt.get("win_rate") * 100) if bt.get("win_rate") is not none else "n/a" }} &middot;
+           Wins: {{ bt.get("wins") }} &middot; Losses: {{ bt.get("losses") }} &middot; No result: {{ bt.get("no_result") }}</p>
+    {% else %}
+        <p class="muted">Not recorded for this signal.</p>
+    {% endif %}
+</div>
+
+{% if s.ai_explanation %}
+<div class="card">
+    <h2 style="margin-top:0">AI explanation</h2>
+    <p>{{ s.ai_explanation }}</p>
+</div>
+{% endif %}
+
+{% endblock %}
