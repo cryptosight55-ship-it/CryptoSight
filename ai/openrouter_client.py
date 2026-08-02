@@ -39,7 +39,7 @@ class OpenRouterClient:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
-        max_tokens: int = 800,
+        max_tokens: int = 1500,
         response_format_json: bool = False,
         timeout: float = 30.0,
     ) -> str:

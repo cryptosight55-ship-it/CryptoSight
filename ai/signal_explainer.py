@@ -34,7 +34,12 @@ def explain_signal(
         return openrouter_client.chat(
             [{"role": "user", "content": prompt}],
             temperature=0.3,
-            max_tokens=200,
+            # openrouter/free can route to a reasoning model that spends
+            # tokens thinking before answering (see ai/accuracy_reviewer.py
+            # for a case where 200 wasn't nearly enough room for that).
+            # Hasn't failed here yet, but same shared risk -- more room
+            # doesn't cost anything on a free-tier model.
+            max_tokens=600,
         ).strip()
     except OpenRouterError as e:
         logger.warning(f"Signal explanation failed for {symbol}: {e}")

@@ -92,7 +92,15 @@ def _ask_ai_for_adjustment(strategy_name: str, current_weight: float, perf: dict
         [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
-        ]
+        ],
+        # openrouter/free's auto-router can land on a chain-of-thought
+        # "reasoning" model, which spends tokens thinking out loud before
+        # answering (visible in the response's separate 'reasoning'
+        # field) and needs real room to both finish that AND write the
+        # actual JSON answer to 'content'. 800 wasn't enough -- observed
+        # a real request hit finish_reason='length' after ~670 reasoning
+        # tokens with content still None.
+        max_tokens=3000,
     )
     if "new_weight" not in result:
         raise OpenRouterError(f"AI response missing 'new_weight': {result}")
