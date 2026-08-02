@@ -10,6 +10,7 @@ admin/server.py, on the hour, every hour -- and can also be triggered
 manually from the admin panel or POST /api/scan/run.
 """
 
+import gc
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -206,6 +207,17 @@ def run_scan(bypass_cooldown: bool = False) -> dict:
         except Exception as e:
             logger.exception(f"Scan failed for {symbol}")
             results.append({"symbol": symbol, "action": "error", "error": str(e)})
+        finally:
+            # Explicitly nudge collection of the 500-candle DataFrame (and,
+            # for firing symbols, up to ~80 backtest sub-DataFrames) this
+            # iteration just created. Python's generational GC doesn't
+            # always reclaim large pandas/numpy objects immediately in a
+            # tight loop -- this matters specifically because a scheduled
+            # scan can run concurrently with the admin panel and other
+            # jobs in this single-process (WEB_CONCURRENCY=1) deployment,
+            # where peak resident memory across everything running at once
+            # is what actually hits Render's 512MB ceiling.
+            gc.collect()
 
     signals_fired = [r for r in results if r.get("action") == "signal_fired"]
     logger.info(

@@ -13,6 +13,9 @@ from config.settings import config
 
 logger = logging.getLogger(__name__)
 
+MAX_ALERT_HISTORY = 200  # bounded, see the note in send_discord_alert()
+
+
 class AlertManager:
     """Enhanced alert management with multiple channels and formatting"""
     
@@ -183,13 +186,18 @@ class AlertManager:
             if response.status_code in (200, 204):
                 logger.info(f"✅ Discord alert sent for {signal_data.get('symbol', 'UNKNOWN')}")
                 
-                # Store in history
+                # Store in history, capped -- this process is meant to run
+                # continuously for weeks/months (see the "run for a month"
+                # plan), so an unbounded list here is a real slow leak,
+                # not a theoretical one.
                 self.alert_history.append({
                     'timestamp': datetime.now(timezone.utc),
                     'symbol': signal_data.get('symbol'),
                     'type': 'trade_signal',
                     'status': 'sent'
                 })
+                if len(self.alert_history) > MAX_ALERT_HISTORY:
+                    self.alert_history = self.alert_history[-MAX_ALERT_HISTORY:]
                 
                 return True
             else:
