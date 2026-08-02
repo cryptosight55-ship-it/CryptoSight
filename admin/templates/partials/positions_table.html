@@ -1,0 +1,31 @@
+{% if error %}
+    <p class="muted">Couldn't fetch current prices ({{ error }}) -- showing entry/TP/SL only.</p>
+{% endif %}
+<table>
+    <thead>
+        <tr>
+            <th>Symbol</th><th>Dir</th><th>Entry</th><th>Current</th><th>Unrealized</th>
+            <th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Opened</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in positions %}
+        <tr>
+            <td>{{ p.symbol }}</td>
+            <td class="{{ p.direction|lower }}">{{ p.direction }}</td>
+            <td>{{ p.entry }}</td>
+            <td>{{ p.current if p.current is not none else "-" }}</td>
+            <td class="{{ 'buy' if p.pnl_pct and p.pnl_pct > 0 else ('sell' if p.pnl_pct and p.pnl_pct < 0 else '') }}">
+                {{ "%.2f%%"|format(p.pnl_pct) if p.pnl_pct is not none else "-" }}
+            </td>
+            <td>{{ p.stop_loss }}</td>
+            <td>{{ p.tp1 }}</td>
+            <td>{{ p.tp2 }}</td>
+            <td>{{ p.tp3 }}</td>
+            <td class="muted">{{ p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="muted">No open positions right now.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

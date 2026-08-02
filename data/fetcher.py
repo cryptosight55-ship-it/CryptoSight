@@ -7,7 +7,7 @@ import ccxt
 import pandas as pd
 import time
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 from config.settings import config
 
 # Set up logging
@@ -23,6 +23,8 @@ class DataFetcher:
         self._markets_cache = None
         self._last_markets_update = 0
         self.markets_cache_ttl = 3600  # 1 hour
+        self._price_cache: Dict[str, float] = {}
+        self._price_cache_at = 0.0
         
     def _initialize_exchange(self, exchange_name):
         """Initialize exchange with proper error handling"""
@@ -252,6 +254,43 @@ class DataFetcher:
             logger.error(f"❌ Failed to fetch historical data for {symbol}: {e}")
             return None
     
+    def get_current_prices_bulk(self, symbols: List[str], cache_ttl: float = 20.0) -> Dict[str, float]:
+        """
+        Current prices for several symbols in ONE API call (ccxt's
+        fetch_tickers accepts a symbol list), not one call per symbol --
+        for the admin dashboard's live position tracking, which could
+        otherwise mean a call per open signal every time someone hits
+        refresh. Cached for cache_ttl seconds so a manual refresh click,
+        auto-polling, and multiple open dashboard tabs can't each trigger
+        a fresh Binance call within the same short window -- this project
+        has hit real rate-limit bans before from exactly this kind of
+        request pattern, so this is deliberately conservative.
+
+        On failure, falls back to whatever's cached (even if stale)
+        rather than returning nothing.
+        """
+        if not symbols:
+            return {}
+
+        now = time.time()
+        if self._price_cache and (now - self._price_cache_at) < cache_ttl:
+            return {s: self._price_cache[s] for s in symbols if s in self._price_cache}
+
+        try:
+            self._rate_limit()
+            tickers = self.exchange.fetch_tickers(symbols)
+            prices = {}
+            for sym, ticker in tickers.items():
+                price = ticker.get('last') or ticker.get('close')
+                if price is not None:
+                    prices[sym] = float(price)
+            self._price_cache = prices
+            self._price_cache_at = now
+            return {s: prices[s] for s in symbols if s in prices}
+        except Exception as e:
+            logger.warning(f"⚠️ Bulk price fetch failed, using stale cache if available: {e}")
+            return {s: self._price_cache[s] for s in symbols if s in self._price_cache}
+
     def get_current_price(self, symbol: str) -> Optional[float]:
         """Get current price for a symbol"""
         try:

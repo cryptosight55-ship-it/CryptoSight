@@ -9,6 +9,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from database.db import get_session
+from data.fetcher import get_data_fetcher
 from database.models import SignalRecord, StrategyWeight, LearnedInsight
 from ai.accuracy_reviewer import review_and_adjust_weights
 from core.scanner import run_scan
@@ -22,6 +23,46 @@ router = APIRouter(prefix="/api", tags=["api"])
 @router.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@router.get("/positions")
+def list_positions():
+    """Open (pending) signals with live current price, TP1/2/3, and unrealized P&L."""
+    with get_session() as session:
+        pending = session.query(SignalRecord).filter_by(status="pending").all()
+
+    symbols = sorted({s.symbol for s in pending})
+    prices = {}
+    if symbols:
+        try:
+            prices = get_data_fetcher().get_current_prices_bulk(symbols)
+        except Exception as e:
+            logger.warning(f"Failed to fetch current prices for /api/positions: {e}")
+
+    result = []
+    for s in pending:
+        entry = s.entry_price
+        tp = s.take_profit
+        tp_distance = (tp - entry) if (tp is not None and entry is not None) else None
+        current = prices.get(s.symbol)
+        pnl_pct = None
+        if current is not None and entry:
+            pnl_pct = (current - entry) / entry * 100 if s.direction == "BUY" else (entry - current) / entry * 100
+
+        result.append({
+            "id": s.id,
+            "symbol": s.symbol,
+            "direction": s.direction,
+            "entry_price": entry,
+            "current_price": current,
+            "unrealized_pnl_pct": round(pnl_pct, 4) if pnl_pct is not None else None,
+            "stop_loss": s.stop_loss,
+            "tp1": tp,
+            "tp2": entry + 1.5 * tp_distance if tp_distance is not None else None,
+            "tp3": entry + 2.0 * tp_distance if tp_distance is not None else None,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+        })
+    return result
 
 
 @router.get("/signals")

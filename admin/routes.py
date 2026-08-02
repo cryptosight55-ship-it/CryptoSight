@@ -18,6 +18,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from config.settings import config
+from data.fetcher import get_data_fetcher
 from database.db import get_session
 from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog, LearnedInsight
 from admin.auth import check_password, require_login, is_logged_in
@@ -76,6 +77,59 @@ def signal_detail(request: Request, signal_id: int, _=Depends(require_login)):
     if record is None:
         return HTMLResponse("Signal not found", status_code=404)
     return templates.TemplateResponse(request, "signal_detail.html", {"s": record})
+
+
+@router.get("/positions", response_class=HTMLResponse)
+def positions_partial(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        pending = (
+            session.query(SignalRecord)
+            .filter_by(status="pending")
+            .order_by(SignalRecord.created_at.desc())
+            .all()
+        )
+
+    symbols = sorted({s.symbol for s in pending})
+    prices: dict = {}
+    error = None
+    if symbols:
+        try:
+            prices = get_data_fetcher().get_current_prices_bulk(symbols)
+        except Exception as e:
+            logger.warning(f"Failed to fetch current prices for positions table: {e}")
+            error = str(e)
+
+    positions = []
+    for s in pending:
+        entry = s.entry_price
+        tp = s.take_profit
+        # Same TP1/TP2/TP3 formula core/scanner.py already uses for the
+        # Discord alert -- not stored on SignalRecord (adding columns to
+        # an existing Postgres table needs a real migration, which this
+        # avoids), derived identically here so the dashboard and Discord
+        # never disagree.
+        tp_distance = (tp - entry) if (tp is not None and entry is not None) else None
+        tp1 = tp
+        tp2 = entry + 1.5 * tp_distance if tp_distance is not None else None
+        tp3 = entry + 2.0 * tp_distance if tp_distance is not None else None
+
+        current = prices.get(s.symbol)
+        pnl_pct = None
+        if current is not None and entry:
+            if s.direction == "BUY":
+                pnl_pct = (current - entry) / entry * 100
+            else:
+                pnl_pct = (entry - current) / entry * 100
+
+        positions.append({
+            "symbol": s.symbol, "direction": s.direction, "entry": entry,
+            "current": current, "pnl_pct": pnl_pct, "stop_loss": s.stop_loss,
+            "tp1": tp1, "tp2": tp2, "tp3": tp3, "created_at": s.created_at,
+        })
+
+    return templates.TemplateResponse(
+        request, "partials/positions_table.html", {"positions": positions, "error": error}
+    )
 
 
 @router.get("/signals", response_class=HTMLResponse)

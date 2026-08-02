@@ -3,6 +3,19 @@
 {% block content %}
 
 <div class="card">
+    <h2 style="margin-top:0">Open positions</h2>
+    <p class="muted">Live current price for every pending signal (entry, TP1/TP2/TP3, SL, unrealized
+        P&amp;L). Price data is cached ~20s server-side, so refreshing often or having this open in
+        several tabs won't repeatedly hit Binance.</p>
+    <button hx-get="/admin/positions" hx-target="#positions-container" hx-swap="innerHTML"
+            hx-indicator="#positions-spinner">
+        Refresh now
+    </button>
+    <span id="positions-spinner" class="htmx-indicator muted">Fetching current prices...</span>
+    <div id="positions-container" hx-get="/admin/positions" hx-trigger="load, every 60s" hx-swap="innerHTML" style="margin-top:1rem"></div>
+</div>
+
+<div class="card">
     <h2 style="margin-top:0">Signal outcomes</h2>
     <p class="muted">Resolves pending signals to win/loss/expired by checking whether stop-loss
         or take-profit hit first. Runs automatically 15 minutes past every hour; the AI weight
