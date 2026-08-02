@@ -57,6 +57,27 @@ class StrategyWeight(Base):
                          onupdate=lambda: datetime.now(timezone.utc))
 
 
+class LearnedInsight(Base):
+    """
+    Append-only log of observations from the nightly review job
+    (learning/nightly_review.py), same "never overwrite, always add a
+    new row so you can see how conclusions evolve as data accumulates"
+    pattern as WeightAdjustmentLog. Plain statistical grouping (strategy
+    x regime), not ML -- see the module docstring for why.
+    """
+    __tablename__ = "learned_insights"
+
+    id = Column(Integer, primary_key=True)
+    strategy_name = Column(String(64), nullable=True, index=True)
+    regime = Column(String(32), nullable=True, index=True)
+    sample_size = Column(Integer, nullable=False)
+    win_rate = Column(Float, nullable=True)
+    avg_pnl_pct = Column(Float, nullable=True)
+    description = Column(Text, nullable=False)  # plain-language, templated -- not AI-generated
+    supporting_stats = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class WeightAdjustmentLog(Base):
     """
     Audit trail for every AI-proposed weight change. Nothing about this

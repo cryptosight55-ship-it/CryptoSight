@@ -24,6 +24,7 @@ from api.routes import router as api_router
 from signals.aggregator import ALL_STRATEGIES
 from core.scanner import run_scan
 from learning.outcome_resolver import resolve_pending_signals
+from learning.nightly_review import run_nightly_review
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,15 @@ def _scheduled_resolve_outcomes():
         logger.exception("Scheduled outcome resolution failed")
 
 
+def _scheduled_nightly_review():
+    logger.info("Running scheduled nightly review")
+    try:
+        result = run_nightly_review()
+        logger.info(f"Scheduled nightly review: {len(result.get('written', []))} insights written")
+    except Exception:
+        logger.exception("Scheduled nightly review failed")
+
+
 @app.on_event("startup")
 def on_startup():
     config.setup_logging()
@@ -99,6 +109,8 @@ def on_startup():
     # in learning/outcome_resolver.py), which is fine, it's a cheap no-op
     # for anything not old enough yet.
     scheduler.add_job(_scheduled_resolve_outcomes, CronTrigger(minute=15), id="resolve_outcomes", replace_existing=True)
+    # Once a day, off-peak, well clear of the hourly jobs.
+    scheduler.add_job(_scheduled_nightly_review, CronTrigger(hour=2, minute=30), id="nightly_review", replace_existing=True)
     scheduler.start()
 
     logger.info("CryptoSight admin app started")

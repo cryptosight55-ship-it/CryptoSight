@@ -1,0 +1,25 @@
+{% if error %}
+    <div class="card"><strong style="color:#f87171">Review failed:</strong> {{ error }}</div>
+{% else %}
+    <p class="muted">
+        {{ summary.get("total_resolved_signals", 0) }} resolved signals available,
+        {{ summary.get("written", [])|length }} insight(s) written this run,
+        {{ summary.get("skipped", [])|length }} group(s) still below the sample threshold.
+    </p>
+    <table>
+        <thead><tr><th>Strategy</th><th>Regime</th><th>Sample</th><th>Win rate</th><th>Avg P&amp;L</th></tr></thead>
+        <tbody>
+        {% for i in summary.get("written", []) %}
+            <tr>
+                <td>{{ i.strategy_name }}</td>
+                <td>{{ i.regime }}</td>
+                <td>{{ i.sample_size }}</td>
+                <td>{{ "%.0f%%"|format(i.win_rate * 100) }}</td>
+                <td>{{ "%.2f%%"|format(i.avg_pnl_pct) if i.avg_pnl_pct is not none else "-" }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5" class="muted">No groups had enough samples this run.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

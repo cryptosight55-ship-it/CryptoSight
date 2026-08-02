@@ -19,11 +19,12 @@ from fastapi.templating import Jinja2Templates
 
 from config.settings import config
 from database.db import get_session
-from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog
+from database.models import SignalRecord, StrategyWeight, WeightAdjustmentLog, LearnedInsight
 from admin.auth import check_password, require_login, is_logged_in
 from ai.accuracy_reviewer import review_and_adjust_weights
 from core.scanner import run_scan
 from learning.outcome_resolver import resolve_pending_signals
+from learning.nightly_review import run_nightly_review
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,32 @@ def trigger_resolve_outcomes(request: Request, _=Depends(require_login)):
     return templates.TemplateResponse(
         request, "partials/resolve_results.html", {"summary": summary, "error": error}
     )
+
+
+@router.post("/insights/review", response_class=HTMLResponse)
+def trigger_nightly_review(request: Request, _=Depends(require_login)):
+    try:
+        summary = run_nightly_review()
+        error = None
+    except Exception as e:
+        logger.exception("Manual nightly review failed")
+        summary = {}
+        error = str(e)
+    return templates.TemplateResponse(
+        request, "partials/review_insights_results.html", {"summary": summary, "error": error}
+    )
+
+
+@router.get("/insights", response_class=HTMLResponse)
+def insights_page(request: Request, _=Depends(require_login)):
+    with get_session() as session:
+        insights = (
+            session.query(LearnedInsight)
+            .order_by(LearnedInsight.created_at.desc())
+            .limit(100)
+            .all()
+        )
+    return templates.TemplateResponse(request, "insights.html", {"insights": insights})
 
 
 @router.post("/weights/{weight_id}", response_class=HTMLResponse)

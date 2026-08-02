@@ -31,6 +31,20 @@
 </div>
 
 <div class="card">
+    <h2 style="margin-top:0">Learned insights</h2>
+    <p class="muted">Groups resolved signals by strategy &times; market regime to find patterns
+        like "momentum underperforms in ranging markets" -- plain statistical grouping, not AI.
+        Runs nightly at 2:30 UTC; needs at least 8 resolved signals per group to say anything.
+        <a href="/admin/insights">Browse the full history &rarr;</a></p>
+    <button hx-post="/admin/insights/review" hx-target="#insights-results" hx-swap="innerHTML"
+            hx-indicator="#insights-spinner">
+        Run nightly review now
+    </button>
+    <span id="insights-spinner" class="htmx-indicator muted">Grouping resolved signals...</span>
+    <div id="insights-results" style="margin-top:1rem"></div>
+</div>
+
+<div class="card">
     <h2 style="margin-top:0">Strategy weights</h2>
     <p class="muted">The AI reviews recent closed signals per strategy and proposes weight
         adjustments, bounded to &plusmn;20% per run and clamped to each strategy's

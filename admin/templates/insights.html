@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Learned insights - CryptoSight Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <h2 style="margin-top:0">Learned insights</h2>
+    <p class="muted">Append-only log from the nightly review job -- grouped by strategy x regime,
+        plain statistical observations, not AI-generated. Only written when a group has at least
+        8 resolved signals. History is kept even as new rows are added for the same group, so you
+        can see how a conclusion evolves as more data comes in.</p>
+    <table>
+        <thead><tr><th>When</th><th>Strategy</th><th>Regime</th><th>Sample</th><th>Win rate</th><th>Avg P&amp;L</th><th>Description</th></tr></thead>
+        <tbody>
+        {% for i in insights %}
+            <tr>
+                <td class="muted">{{ i.created_at.strftime("%Y-%m-%d %H:%M") if i.created_at else "-" }}</td>
+                <td>{{ i.strategy_name }}</td>
+                <td>{{ i.regime }}</td>
+                <td>{{ i.sample_size }}</td>
+                <td>{{ "%.0f%%"|format(i.win_rate * 100) if i.win_rate is not none else "-" }}</td>
+                <td>{{ "%.2f%%"|format(i.avg_pnl_pct) if i.avg_pnl_pct is not none else "-" }}</td>
+                <td class="muted">{{ i.description }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="7" class="muted">No insights yet -- groups need at least 8 resolved signals each.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

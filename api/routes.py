@@ -9,10 +9,11 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from database.db import get_session
-from database.models import SignalRecord, StrategyWeight
+from database.models import SignalRecord, StrategyWeight, LearnedInsight
 from ai.accuracy_reviewer import review_and_adjust_weights
 from core.scanner import run_scan
 from learning.outcome_resolver import resolve_pending_signals
+from learning.nightly_review import run_nightly_review
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["api"])
@@ -123,4 +124,36 @@ def trigger_resolve_outcomes():
         return resolve_pending_signals()
     except Exception as e:
         logger.exception("Manual outcome resolution failed via API")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/insights")
+def list_insights(limit: int = 100):
+    with get_session() as session:
+        rows = (
+            session.query(LearnedInsight)
+            .order_by(LearnedInsight.created_at.desc())
+            .limit(min(limit, 500))
+            .all()
+        )
+        return [
+            {
+                "strategy_name": i.strategy_name,
+                "regime": i.regime,
+                "sample_size": i.sample_size,
+                "win_rate": i.win_rate,
+                "avg_pnl_pct": i.avg_pnl_pct,
+                "description": i.description,
+                "created_at": i.created_at.isoformat() if i.created_at else None,
+            }
+            for i in rows
+        ]
+
+
+@router.post("/insights/review")
+def trigger_nightly_review():
+    try:
+        return run_nightly_review()
+    except Exception as e:
+        logger.exception("Manual nightly review failed via API")
         raise HTTPException(status_code=500, detail=str(e))
