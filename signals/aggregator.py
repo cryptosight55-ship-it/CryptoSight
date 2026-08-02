@@ -145,9 +145,22 @@ def aggregate(
     else:
         return None
 
-    total_possible_weight = sum(effective_weight(s.name) for s in ALL_STRATEGIES if s.is_active())
+    # Normalize by the weight of strategies that actually expressed a
+    # directional opinion (BUY or SELL, on either side), not every
+    # active strategy regardless of participation. A strategy returning
+    # HOLD is abstaining, not voting against -- if it were included in
+    # the denominator anyway, a strategy that simply had no opinion on
+    # THIS signal could still suppress its confidence just by having a
+    # larger configured weight than the strategies that did agree. This
+    # is what caused a real signal (3 strategies agreeing, 75% backtest
+    # win rate) to show 1% confidence: 'volume' returned HOLD but still
+    # dragged the denominator down with its untouched weight while
+    # trend/momentum/volatility had been correctly cut low by the AI
+    # reviewer for poor performance.
+    directional_results = buy_results + sell_results
+    total_directional_weight = sum(effective_weight(r.strategy_name) for r in directional_results)
     weighted_sum = sum(r.confidence * effective_weight(r.strategy_name) for r in agreeing)
-    base_confidence = float(min(weighted_sum / total_possible_weight, 1.0)) if total_possible_weight else 0.0
+    base_confidence = float(min(weighted_sum / total_directional_weight, 1.0)) if total_directional_weight else 0.0
 
     confidence, context_evidence = _apply_context_adjustment(base_confidence, direction, context_signals or [])
 
