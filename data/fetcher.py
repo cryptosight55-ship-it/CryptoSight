@@ -250,6 +250,14 @@ class DataFetcher:
             
             return None
             
+        except (ccxt.DDoSProtection, ccxt.RateLimitExceeded) as e:
+            # Don't swallow this into a None return -- a caller looping
+            # over many symbols/signals (like learning/outcome_resolver.py)
+            # needs to know this was specifically a ban/throttle, not
+            # "no data available," so it can stop instead of immediately
+            # retrying on the next item and making the ban worse.
+            logger.error(f"🚫 Exchange is throttling/has banned this IP fetching historical data for {symbol}: {e}")
+            raise
         except Exception as e:
             logger.error(f"❌ Failed to fetch historical data for {symbol}: {e}")
             return None
@@ -303,10 +311,36 @@ class DataFetcher:
 
 # Global instance - lazy initialization
 data_fetcher = None
+_init_failed_until = 0.0
+INIT_FAILURE_COOLDOWN_SECONDS = 300  # matches core/scanner.py's manual-scan cooldown
 
 def get_data_fetcher():
-    """Get data fetcher instance with lazy initialization"""
-    global data_fetcher
+    """
+    Get data fetcher instance with lazy initialization.
+
+    If a previous initialization attempt failed (e.g. Binance rate-limit
+    ban), this fails FAST for INIT_FAILURE_COOLDOWN_SECONDS instead of
+    retrying the network call on every single caller. Without this, a
+    caller that loops over many items and calls get_data_fetcher() once
+    per item -- e.g. learning/outcome_resolver.py, once per pending
+    signal -- turns one ban into dozens of rapid-fire reconnection
+    attempts with zero delay between them, which both makes the ban
+    worse and was very likely the real cause of a memory spike severe
+    enough to crash the whole service (see PHASE3_SCANNER.md's ongoing
+    notes on this).
+    """
+    global data_fetcher, _init_failed_until
     if data_fetcher is None:
-        data_fetcher = DataFetcher()
+        now = time.time()
+        if now < _init_failed_until:
+            remaining = _init_failed_until - now
+            raise RuntimeError(
+                f"Exchange initialization failed recently; refusing to retry for "
+                f"{remaining:.0f}s more (cooldown to avoid hammering Binance during a ban)."
+            )
+        try:
+            data_fetcher = DataFetcher()
+        except Exception:
+            _init_failed_until = now + INIT_FAILURE_COOLDOWN_SECONDS
+            raise
     return data_fetcher

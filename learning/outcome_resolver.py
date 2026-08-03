@@ -17,6 +17,8 @@ pending forever.
 import logging
 from datetime import datetime, timezone, timedelta
 
+import ccxt
+
 from config.settings import config
 from data.fetcher import get_data_fetcher
 from database.db import get_session
@@ -100,6 +102,18 @@ def resolve_pending_signals() -> dict:
         for record in eligible:
             try:
                 status, closed_at, pnl_pct = _resolve_one(record)
+            except (ccxt.DDoSProtection, ccxt.RateLimitExceeded) as e:
+                # Binance is actively throttling/banning us -- stop the
+                # whole resolution pass immediately rather than
+                # continuing to the next signal. This is what previously
+                # turned one ban into 40+ rapid reconnection attempts,
+                # one per pending signal, with zero delay between them --
+                # see get_data_fetcher()'s cooldown in data/fetcher.py,
+                # which this also relies on to fail fast on the very next
+                # scheduled run instead of retrying immediately.
+                logger.error(f"Exchange rate-limited/banned mid-resolution at signal {record.id}, stopping: {e}")
+                errors.append({"id": record.id, "symbol": record.symbol, "error": str(e)})
+                break
             except Exception as e:
                 logger.warning(f"Failed to resolve signal {record.id} ({record.symbol}): {e}")
                 errors.append({"id": record.id, "symbol": record.symbol, "error": str(e)})
