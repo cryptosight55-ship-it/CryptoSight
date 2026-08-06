@@ -120,6 +120,14 @@ class Config:
     AI_MIN_STRATEGY_WEIGHT = float(os.getenv("AI_MIN_STRATEGY_WEIGHT", "0.1"))
     AI_MAX_STRATEGY_WEIGHT = float(os.getenv("AI_MAX_STRATEGY_WEIGHT", "5.0"))
 
+    # Emergency kill switch: when true, every exchange call fails
+    # immediately with no network attempt at all -- not even one. Set
+    # this in Render's dashboard (no redeploy needed, just an env var
+    # change) to test whether a persistent Binance ban is actually
+    # self-perpetuating from ANY traffic reaching it, even the throttled,
+    # once-per-cooldown-window traffic the app normally sends.
+    EXCHANGE_PAUSED = os.getenv("EXCHANGE_PAUSED", "false").lower() == "true"
+
     # Admin panel
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
     SECRET_KEY = os.getenv("SECRET_KEY", "")

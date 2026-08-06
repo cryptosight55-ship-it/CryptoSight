@@ -330,6 +330,11 @@ def get_data_fetcher():
     notes on this).
     """
     global data_fetcher, _init_failed_until
+    if config.EXCHANGE_PAUSED:
+        raise RuntimeError(
+            "Exchange access is paused (EXCHANGE_PAUSED=true) -- remove that env var "
+            "in Render's dashboard to resume."
+        )
     if data_fetcher is None:
         now = time.time()
         if now < _init_failed_until:
