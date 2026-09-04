@@ -55,7 +55,19 @@ MIN_AGREEING = 3
 # volatility strategy didn't run or didn't return ATR (shouldn't normally
 # happen, but analyze() calls are individually try/excepted below).
 ATR_STOP_MULTIPLE = 1.5
-ATR_TARGET_MULTIPLE = 3.0  # 1:2 risk/reward baked in
+# Changed Sept 2026 from 3.0 (1:2 R:R, needed a 33% win rate to break
+# even) after a full month showed EVERY regime bucket below that bar --
+# as low as 6% in momentum/high_volatility, best case 29% in the
+# calmest regimes. A 1:2 target was likely too far away relative to
+# typical price noise, causing whipsaw losses before ever reaching it.
+# 2.0 brings R:R to ~1.33:1 (breakeven ~43% win rate -- a HIGHER bar on
+# paper), betting that a meaningfully closer target raises the ACTUAL
+# win rate by more than the bar itself rises. This is a hypothesis to
+# validate against the next stretch of resolved signals, not a proven
+# fix -- there's no historical data at this exact ratio yet, only at
+# the old 3.0. Revisit via the nightly review once enough new signals
+# have resolved under this setting.
+ATR_TARGET_MULTIPLE = 2.0
 
 # Bounded, same philosophy as ai/accuracy_reviewer.py's weight-step cap:
 # a new, unvalidated layer shouldn't be able to swing confidence wildly.

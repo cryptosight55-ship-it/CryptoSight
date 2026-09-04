@@ -37,13 +37,41 @@ LOW_VOLATILITY = "low_volatility"
 # Conservative on purpose -- these nudge, they don't dominate the
 # aggregation math. Missing combinations default to 1.0 (no adjustment).
 DEFAULT_REGIME_MULTIPLIERS = {
-    ("trend", TRENDING): 1.2,
-    ("trend", RANGING): 0.7,
-    ("momentum", TRENDING): 1.1,
-    ("momentum", RANGING): 0.8,
-    ("volatility", HIGH_VOLATILITY): 1.2,
-    ("volatility", LOW_VOLATILITY): 0.7,
-    ("volume", HIGH_VOLATILITY): 1.1,
+    # Replaced Sept 2026, after a full month of resolved signals made
+    # clear the original assumptions here had the direction BACKWARDS
+    # for this system. The nightly review (learning/nightly_review.py)
+    # showed every strategy performing roughly twice as well in
+    # ranging/low-volatility conditions as in trending/high-volatility
+    # ones -- the opposite of "trend strategies excel during strong
+    # directional markets," which is what the old multipliers assumed.
+    #
+    # Source data (win rate, sample size), Aug 2026:
+    #   trend:      trending 14% (n=28), high_vol 12% (n=17), ranging 28% (n=18), low_vol 23% (n=13)
+    #   momentum:   trending 10% (n=29), high_vol  6% (n=17), ranging 27% (n=22), low_vol 29% (n=14)
+    #   volatility: trending 13% (n=31), high_vol 11% (n=19), ranging 26% (n=19), low_vol 29% (n=14)
+    #   volume:     only ranging had enough samples (20%, n=10) -- not
+    #               enough evidence for the other regimes, left neutral.
+    #
+    # Values below are each regime's win rate divided by that strategy's
+    # own average across regimes, clamped to [0.6, 1.3] to stay a nudge
+    # rather than a dominant force -- samples are real but still modest
+    # (13-31), and this is itself a hypothesis to keep validating as
+    # more data accumulates, not a settled conclusion.
+    ("trend", TRENDING): 0.7,
+    ("trend", HIGH_VOLATILITY): 0.6,
+    ("trend", RANGING): 1.3,
+    ("trend", LOW_VOLATILITY): 1.2,
+    ("momentum", TRENDING): 0.6,
+    ("momentum", HIGH_VOLATILITY): 0.6,
+    ("momentum", RANGING): 1.3,
+    ("momentum", LOW_VOLATILITY): 1.3,
+    ("volatility", TRENDING): 0.7,
+    ("volatility", HIGH_VOLATILITY): 0.6,
+    ("volatility", RANGING): 1.3,
+    ("volatility", LOW_VOLATILITY): 1.3,
+    # volume's old ("volume", HIGH_VOLATILITY): 1.1 boost is removed --
+    # it was never supported by data, and high_volatility is now the
+    # worst-performing regime across every strategy that DOES have data.
 }
 
 
