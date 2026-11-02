@@ -103,7 +103,7 @@ def resolve_pending_signals() -> dict:
             try:
                 status, closed_at, pnl_pct = _resolve_one(record)
             except (ccxt.DDoSProtection, ccxt.RateLimitExceeded) as e:
-                # Binance is actively throttling/banning us -- stop the
+                # The exchange is actively throttling/banning us -- stop the
                 # whole resolution pass immediately rather than
                 # continuing to the next signal. This is what previously
                 # turned one ban into 40+ rapid reconnection attempts,

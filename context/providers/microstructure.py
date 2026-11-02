@@ -5,19 +5,26 @@ Covers 3 of the 4 microstructure signals from the phase-4 roadmap:
 funding rate, open interest, and order-book imbalance -- all free,
 via exchange endpoints already reachable from this app.
 
-NOT covered here: liquidation clusters. Binance only exposes recent
-liquidations through a real-time websocket stream (`!forceOrder@arr`),
-not a REST endpoint with history -- there's no websocket infrastructure
-in this app yet, so this is honestly out of scope for this pass rather
-than faked with something weaker. Revisit if/when a websocket listener
-gets built.
+NOT covered here: liquidation clusters. Most exchanges (this one
+included) only expose recent liquidations through a real-time
+websocket stream, not a REST endpoint with history -- there's no
+websocket infrastructure in this app yet, so this is honestly out of
+scope for this pass rather than faked with something weaker. Revisit
+if/when a websocket listener gets built.
 
 Funding rate and open interest are perpetual-futures concepts and
 don't exist on the spot market -- this provider talks to a separate
-`ccxt.binanceusdm()` client for those two, and reuses the regular spot
-client (via data/fetcher.py) for the order book. Not every spot symbol
-has a matching futures listing; that's handled as a normal "provider
-returned less evidence than usual," not an error.
+linear-perpetuals client (see _get_futures_exchange()) for those two,
+and reuses the regular spot client (via data/fetcher.py) for the order
+book. Not every spot symbol has a matching futures listing; that's
+handled as a normal "provider returned less evidence than usual," not
+an error.
+
+Sept 2026: migrated from ccxt.binanceusdm() to Bybit alongside the rest
+of the app's exchange switch (see config/settings.py's EXCHANGE
+comment for why). Bybit uses ccxt's standard unified symbol convention
+for linear perpetuals (BASE/QUOTE:QUOTE), same as Binance USD-M did, so
+_to_futures_symbol() below needed no change.
 """
 
 import logging
@@ -45,7 +52,7 @@ IMBALANCE_SCORE_WEIGHT = 0.4
 
 
 def _to_futures_symbol(spot_symbol: str) -> str:
-    """'BTC/USDT' -> 'BTC/USDT:USDT' (ccxt's unified symbol for Binance USD-M perpetuals)."""
+    """'BTC/USDT' -> 'BTC/USDT:USDT' (ccxt's standard unified symbol convention for linear perpetuals, used by Bybit, Binance USD-M, and others)."""
     base_quote = spot_symbol.split(":")[0]  # already-futures symbols pass through unchanged
     if ":" in spot_symbol:
         return spot_symbol
@@ -62,7 +69,11 @@ class MicrostructureProvider(ContextProvider):
 
     def _get_futures_exchange(self):
         if self._futures_exchange is None:
-            self._futures_exchange = ccxt.binanceusdm({"enableRateLimit": True})
+            # 'linear' = Bybit's USDT-margined perpetuals, ccxt's
+            # equivalent of what binanceusdm was for Binance. Bybit uses
+            # one unified exchange class with defaultType switching
+            # market, unlike Binance's separate spot/usdm/coinm classes.
+            self._futures_exchange = ccxt.bybit({"enableRateLimit": True, "options": {"defaultType": "linear"}})
         return self._futures_exchange
 
     def fetch(self, symbol: Optional[str] = None) -> ContextSignal:

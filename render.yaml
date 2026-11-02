@@ -3,8 +3,11 @@ services:
     name: cryptosight
     runtime: docker
     dockerfilePath: ./Dockerfile
-    region: frankfurt  # Binance.com blocks US-based IPs (the Render default,
-                        # oregon, is US) -- this is what caused the 451 error.
+    region: frankfurt  # Originally set because Binance.com blocks US-based
+                        # IPs (the Render default, oregon, is US) -- caused
+                        # a 451 error before this was set. Kept as-is after
+                        # the Sept 2026 migration to Bybit (config/settings.py);
+                        # no reason to move back to a US region.
     plan: free
     envVars:
       - key: DATABASE_URL

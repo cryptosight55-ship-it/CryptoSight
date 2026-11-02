@@ -5,7 +5,9 @@ into the single ML model. This calls signals/aggregator.py instead,
 which requires 3-of-5 strategies to agree.
 
 Scans on 1h candles (500 back, ~20 days of history) across the top 40
-USDT pairs by 24h volume on Binance. Runs via APScheduler in
+USDT pairs by 24h volume on the configured exchange (config.EXCHANGE,
+currently Bybit -- see config/settings.py for the Sept 2026 migration
+history). Runs via APScheduler in
 admin/server.py, on the hour, every hour -- and can also be triggered
 manually from the admin panel or POST /api/scan/run.
 """
@@ -17,6 +19,7 @@ from typing import Optional
 
 import ccxt
 
+from config.settings import config
 from data.fetcher import get_data_fetcher
 from signals.aggregator import aggregate
 from backtesting.quick_backtest import quick_backtest
@@ -132,6 +135,7 @@ def _process_symbol(symbol: str) -> dict:
         record = SignalRecord(
             symbol=signal["symbol"],
             timeframe=signal["timeframe"],
+            exchange=config.EXCHANGE,
             direction=signal["direction"].value,
             confidence=signal["confidence"],
             entry_price=signal["entry_price"],
@@ -180,7 +184,7 @@ def run_scan(bypass_cooldown: bool = False) -> dict:
             wait_more = MIN_SCAN_INTERVAL_SECONDS - elapsed
             return {
                 "error": f"Scan ran {elapsed:.0f}s ago -- wait {wait_more:.0f}s more before "
-                         f"triggering another one (protects against exhausting Binance's rate limit).",
+                         f"triggering another one (protects against exhausting the exchange's rate limit).",
                 "started_at": started_at.isoformat(),
             }
 
@@ -198,7 +202,7 @@ def run_scan(bypass_cooldown: bool = False) -> dict:
         try:
             results.append(_process_symbol(symbol))
         except (ccxt.DDoSProtection, ccxt.RateLimitExceeded) as e:
-            # Binance is actively throttling/banning us -- stop immediately
+            # The exchange is actively throttling/banning us -- stop immediately
             # rather than burning through the remaining symbols into the
             # same wall, which only makes any ban last longer.
             logger.error(f"Exchange rate-limited/banned mid-scan at {symbol}, stopping scan: {e}")

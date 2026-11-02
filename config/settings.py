@@ -23,7 +23,21 @@ class Config:
     """Main configuration class"""
 
     # API Settings
-    EXCHANGE = 'binance'
+    # Sept 2026: migrated from Binance to Bybit after a Binance IP ban
+    # that persisted across days despite every rate-limit safeguard in
+    # this codebase working correctly (see PHASE5_DATA_DRIVEN_TUNING.md
+    # era notes / conversation history) -- most likely either an
+    # extremely long escalated penalty, or Render's shared free-tier IP
+    # catching punishment for other tenants' traffic. Bybit uses the
+    # same ccxt unified symbol convention for perpetuals
+    # (BASE/QUOTE:QUOTE) that context/providers/microstructure.py
+    # already assumed for Binance USD-M futures, so that code needed
+    # minimal change. NOTE: config.EXCHANGE was previously dead config
+    # -- data/fetcher.py's DataFetcher always used its own hardcoded
+    # default regardless of this setting. Fixed alongside this change;
+    # this is now the actual single source of truth for which exchange
+    # the app uses.
+    EXCHANGE = 'bybit'
     EXCHANGE_OPTIONS = {'enableRateLimit': True, 'options': {'defaultType': 'spot'}}
 
     # Data Paths

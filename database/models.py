@@ -23,7 +23,7 @@ class SignalRecord(Base):
 
     id = Column(Integer, primary_key=True)
     symbol = Column(String(32), nullable=False, index=True)
-    exchange = Column(String(32), default="binance")
+    exchange = Column(String(32), default="bybit")  # set explicitly in core/scanner.py; this default is just a fallback
     timeframe = Column(String(8), nullable=False)
     direction = Column(String(8), nullable=False)  # BUY / SELL / HOLD
     confidence = Column(Float, nullable=False)

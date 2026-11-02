@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class DataFetcher:
     """Enhanced data fetcher with robust error handling"""
     
-    def __init__(self, exchange_name='binance', rate_limit_delay=0.1):
+    def __init__(self, exchange_name='bybit', rate_limit_delay=0.1):
         self.rate_limit_delay = rate_limit_delay
         self.exchange = self._initialize_exchange(exchange_name)
         self._markets_cache = None
@@ -160,7 +160,7 @@ class DataFetcher:
                 
             except ccxt.DDoSProtection as e:
                 # Covers ccxt.RateLimitExceeded too (it's a subclass).
-                # Binance has actively throttled or banned this IP -- don't
+                # The exchange has actively throttled or banned this IP -- don't
                 # retry, that only makes the ban worse. Let it propagate so
                 # the caller (core/scanner.py's run_scan) can abort the
                 # whole scan instead of hitting this same wall 39 more times.
@@ -341,10 +341,10 @@ def get_data_fetcher():
             remaining = _init_failed_until - now
             raise RuntimeError(
                 f"Exchange initialization failed recently; refusing to retry for "
-                f"{remaining:.0f}s more (cooldown to avoid hammering Binance during a ban)."
+                f"{remaining:.0f}s more (cooldown to avoid hammering the exchange during a ban)."
             )
         try:
-            data_fetcher = DataFetcher()
+            data_fetcher = DataFetcher(exchange_name=config.EXCHANGE)
         except Exception:
             _init_failed_until = now + INIT_FAILURE_COOLDOWN_SECONDS
             raise
