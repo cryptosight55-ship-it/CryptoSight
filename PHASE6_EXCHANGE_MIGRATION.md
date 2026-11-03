@@ -85,3 +85,35 @@ DDoSProtection handling) was already exchange-agnostic -- it uses
 `self.exchange` generically via `getattr(ccxt, exchange_name)`, no
 Binance-specific assumptions in the logic itself. That's *why* this
 migration was a config change plus one provider update, not a rewrite.
+
+---
+
+## Nov 2026 addendum: first rebuild in months broke on dependency drift
+
+Deploying this migration was the first full Docker rebuild in a long
+time, and `requirements.txt` is unpinned (`>=` only), so pip pulled
+current versions of everything. Three things needed fixing before the
+app would even start:
+
+1. **`database/db.py` -- crash on import:** `ModuleNotFoundError: No
+   module named 'psycopg'`. SQLAlchemy 2.1 changed the default driver for
+   plain `postgresql://` URLs from psycopg2 to psycopg (v3), which isn't
+   installed. Fixed by normalizing both `postgres://` and
+   `postgresql://` to `postgresql+psycopg2://` explicitly.
+2. **`admin/server.py` -- precautionary:** the deprecated
+   `@app.on_event("startup"/"shutdown")` hooks were converted to a
+   `lifespan` context manager (same behavior). Not confirmed to be
+   broken yet -- the app crashed before reaching them -- but they're
+   deprecated and newer Starlette/FastAPI releases may drop them.
+3. **`admin/routes.py`, `api/routes.py` -- precautionary:** three legacy
+   `session.query(Model).get(id)` calls replaced with
+   `session.get(Model, id)`.
+
+Items 2 and 3 couldn't be run in the build sandbox (no network, so
+FastAPI/SQLAlchemy 2.1 aren't installable there) -- they're
+syntax-checked only. Anything else that drifted will surface in the
+Render logs after the next deploy.
+
+**Suggested follow-up once the app is up and stable:** pin
+`requirements.txt` to the exact working versions (`pip freeze` from the
+running container) so a rebuild can't silently change behavior again.

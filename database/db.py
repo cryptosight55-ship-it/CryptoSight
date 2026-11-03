@@ -14,11 +14,17 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from config.settings import config
 
-# Render's DATABASE_URL sometimes starts with postgres:// ; SQLAlchemy 2.x
-# requires postgresql://
+# Providers (Render, Neon) hand out postgres:// or postgresql:// URLs.
+# Normalize both to name the psycopg2 driver explicitly. Without the
+# "+psycopg2", SQLAlchemy 2.1+ defaults to the newer psycopg (v3)
+# driver, which isn't in requirements.txt -- this caused a startup crash
+# (ModuleNotFoundError: No module named 'psycopg') on the first full
+# rebuild after months of unpinned dependencies drifting forward.
 _db_url = config.DATABASE_URL
 if _db_url.startswith("postgres://"):
-    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 _connect_args = {"check_same_thread": False} if _db_url.startswith("sqlite") else {}
 

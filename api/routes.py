@@ -95,7 +95,7 @@ def list_signals(limit: int = 50):
 @router.get("/signals/{signal_id}")
 def get_signal(signal_id: int):
     with get_session() as session:
-        r = session.query(SignalRecord).get(signal_id)
+        r = session.get(SignalRecord, signal_id)
         if r is None:
             raise HTTPException(status_code=404, detail="Signal not found")
         return {

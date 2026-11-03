@@ -9,6 +9,7 @@ Render's start command (see render.yaml / Procfile):
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
@@ -28,7 +29,18 @@ from learning.nightly_review import run_nightly_review
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CryptoSight")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Replaces the deprecated @app.on_event("startup"/"shutdown") hooks.
+    # _startup and scheduler are defined further down this module; they're
+    # only looked up when the app actually starts, after import completes.
+    _startup()
+    yield
+    scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="CryptoSight", lifespan=lifespan)
 
 if not config.SECRET_KEY:
     # A missing SECRET_KEY would mean sessions can't be signed at all --
@@ -90,8 +102,7 @@ def _scheduled_nightly_review():
         logger.exception("Scheduled nightly review failed")
 
 
-@app.on_event("startup")
-def on_startup():
+def _startup():
     config.setup_logging()
     config.ensure_directories()
     init_db()
@@ -114,11 +125,6 @@ def on_startup():
     scheduler.start()
 
     logger.info("CryptoSight admin app started")
-
-
-@app.on_event("shutdown")
-def on_shutdown():
-    scheduler.shutdown(wait=False)
 
 
 @app.get("/")
